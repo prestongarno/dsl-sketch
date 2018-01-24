@@ -1,16 +1,26 @@
-import kotlin.properties.ReadOnlyProperty
-import kotlin.reflect.KProperty
 
+fun <A, Z> adapter(init: (A) -> Z): GraphQlAdapter<Z> =
+    PropertyAdapter(init)
+
+interface GraphQlAdapter<out T> {
+  fun accept(input: Any): Boolean
+  fun getValue(): T?
+}
+
+private
 class PropertyAdapter<in A, T>(
-    val adapter: (A) -> T,
-    val default: T? = null
-) : ReadOnlyProperty<Any, T> {
+    private val adapter: (A) -> T
+) : GraphQlAdapter<T> {
 
-  var value: T? = null
+  var _value: T? = null
 
-  fun deserialize(input: Any) {
-    value = (input as? A)?.let { adapter(it) } ?: value
+  override fun accept(input: Any): Boolean {
+    @Suppress("UNCHECKED_CAST")
+    _value = (input as? A)?.let { adapter(it) } ?: _value
+    return _value == null
   }
 
-  override operator fun getValue(thisRef: Any, property: KProperty<*>): T = value ?: default!!
+  override fun getValue(): T? {
+    return _value
+  }
 }

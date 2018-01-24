@@ -1,7 +1,6 @@
-import com.prestongarno.kotlinq.dsl.ArgBuilder
-import com.prestongarno.kotlinq.dsl.DslBuilder
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
+
 
 class DelegateProvider<in A, Z>(val name: String, val init: (A) -> Z) : DslBuilder<Z, ArgBuilder> {
 
@@ -13,5 +12,7 @@ class DelegateProvider<in A, Z>(val name: String, val init: (A) -> Z) : DslBuild
     args.block()
   }
 
-  operator fun provideDelegate(inst: Any, property: KProperty<*>): ReadOnlyProperty<Any, Z> = TODO()
+  operator fun provideDelegate(inst: Any, property: KProperty<*>)
+      : ReadOnlyProperty<Any, Z> =
+      graphQlProperty(name, property.returnType, adapter(init), default)
 }
