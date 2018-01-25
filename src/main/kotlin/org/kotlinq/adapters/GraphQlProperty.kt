@@ -1,13 +1,11 @@
+package org.kotlinq.adapters
+
+import org.kotlinq.adapters.GraphQlAdapter
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 
-interface GraphQlProperty<out T> : ReadOnlyProperty<Any, T> {
-  val graphqlType: String
-  val propertyName: String
-  val adapter: GraphQlAdapter<T>
-}
-
+internal
 fun <T> graphQlProperty(
     name: String,
     type: KType,
@@ -21,4 +19,11 @@ fun <T> graphQlProperty(
   override val propertyName: String get() = name
   override val adapter: GraphQlAdapter<T> get() = adapter
 
+}
+
+internal
+interface GraphQlProperty<out T> : ReadOnlyProperty<Any, T> {
+  val graphqlType: String
+  val propertyName: String
+  val adapter: GraphQlAdapter<T>
 }
