@@ -48,7 +48,6 @@ class DeserializingDelegateProviderImpl<Z>(
       : ReadOnlyProperty<Any, Z> = graphQlProperty(
       inst,
       name,
-      property.returnType,
       deserializer(property.returnType, init),
       default
   )
@@ -66,10 +65,9 @@ class ParsingDelegateProvider<Z>(
   override fun config(block: ArgBuilder.() -> Unit) = args.block()
 
   override fun provideDelegate(inst: Model<*>, property: KProperty<*>) =
-      graphQlProperty(
+      graphQlProperty<Z>(
           inst,
           name,
-          property.returnType,
           parser(property.returnType, init)
       )
 }
@@ -90,7 +88,6 @@ class DelegateProviderImpl<Z>(
       : ReadOnlyProperty<Any, Z> = graphQlProperty(
       inst,
       name,
-      property.returnType,
       initializer(property.returnType, init),
       default
   )

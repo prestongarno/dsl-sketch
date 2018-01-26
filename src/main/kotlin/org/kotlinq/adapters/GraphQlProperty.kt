@@ -5,18 +5,18 @@ import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 
+@Suppress("UNCHECKED_CAST")
 internal
 fun <T> graphQlProperty(
     context: Model<*>,
     name: String,
-    type: KType,
-    adapter: GraphQlAdapter<T>,
+    adapter: GraphQlAdapter,
     default: T? = null
 ): GraphQlProperty<T> = context.bind(
     object : GraphQlProperty<T> {
 
       override fun getValue(thisRef: Any, property: KProperty<*>): T =
-          adapter.getValue() ?: default!!
+          (adapter.getValue() as? T) ?: default!!
 
       override val kotlinType get() = adapter.type
       override val propertyName get() = name
@@ -30,5 +30,5 @@ internal
 interface GraphQlProperty<out T> : ReadOnlyProperty<Any, T> {
   val kotlinType: KType
   val propertyName: String
-  val adapter: GraphQlAdapter<T>
+  val adapter: GraphQlAdapter
 }
