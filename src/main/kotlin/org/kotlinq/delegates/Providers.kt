@@ -26,7 +26,7 @@ fun <Z> parsingProvider(name: String, init: (String) -> Z)
 
 internal
 fun <Z> initializingProvider(name: String, init: () -> Z)
-    : DslBuilderProvider<Z> = DelegateProviderImpl(name, init)
+    : DslBuilderProvider<Z> = TODO()//DelegateProviderImpl(name, init)
 
 interface DslBuilderProvider<Z>
   : DslBuilder<Z, ArgBuilder>,
@@ -73,7 +73,7 @@ class ParsingDelegateProvider<Z>(
 }
 
 private
-class DelegateProviderImpl<Z>(
+class DelegateProviderImpl<Z : Model<*>>(
     val name: String,
     val init: () -> Z
 ) : DslBuilderProvider<Z> {

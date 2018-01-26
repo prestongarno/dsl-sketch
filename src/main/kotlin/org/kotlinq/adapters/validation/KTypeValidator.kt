@@ -2,8 +2,14 @@ package org.kotlinq.adapters.validation
 
 import org.kotlinq.adapters.GraphQlAdapter
 import org.kotlinq.adapters.GraphQlProperty
+import kotlin.reflect.KType
 import kotlin.reflect.full.isSubtypeOf
 
+
+internal
+fun KType.isCollection(): Boolean {
+  return isSubtypeOf(PrototypeContainer.apexListType)
+}
 
 internal
 fun GraphQlProperty<*>.isList(): Boolean =
@@ -22,7 +28,7 @@ fun GraphQlAdapter.isNullable(): Boolean =
     type.isMarkedNullable
 
 private object PrototypeContainer {
-  val listProperty: List<*>? = emptyList<Any?>()
+  val listProperty: Collection<*>? = emptyList<Any?>()
   val apexListType = PrototypeContainer::listProperty.returnType
 }
 

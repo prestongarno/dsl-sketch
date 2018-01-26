@@ -15,12 +15,14 @@ fun <T> graphQlProperty(
 ): GraphQlProperty<T> = context.bind(
     object : GraphQlProperty<T> {
 
+      private val privateAdapter = adapter.asCollection()
+
       override fun getValue(thisRef: Any, property: KProperty<*>): T =
           (adapter.getValue() as? T) ?: default!!
 
       override val kotlinType get() = adapter.type
       override val propertyName get() = name
-      override val adapter get() = adapter
+      override val adapter get() = privateAdapter
 
       override fun toString() = "GraphQlProperty::$name ($adapter)"
 

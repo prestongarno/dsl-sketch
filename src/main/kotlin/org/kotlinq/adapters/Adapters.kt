@@ -1,7 +1,9 @@
 package org.kotlinq.adapters
 
+import org.kotlinq.adapters.validation.isCollection
 import org.kotlinq.adapters.validation.isList
 import org.kotlinq.adapters.validation.isNullable
+import org.kotlinq.api.Model
 import kotlin.reflect.KType
 
 fun <Z> deserializer(type: KType, init: (java.io.InputStream) -> Z): GraphQlAdapter =
@@ -10,15 +12,19 @@ fun <Z> deserializer(type: KType, init: (java.io.InputStream) -> Z): GraphQlAdap
 fun <Z> parser(type: KType, init: (String) -> Z): GraphQlAdapter =
     ParsingAdapter(type, init)
 
-fun <Z> initializer(type: KType, init: () -> Z): GraphQlAdapter =
+fun <Z : Model<*>> initializer(type: KType, init: () -> Z): GraphQlAdapter =
     ObjectAdapter(type, init)
+
+fun GraphQlAdapter.asCollection() = if (type.isCollection()) CollectionAdapterImpl(this) else this
 
 interface GraphQlAdapter {
   val type: KType
   /* Takes the value [input] and returns the result of setting the value on this property */
   fun accept(input: Any): Boolean
+
   /** Take [input] and return the result of deserializing as an object */
   fun transform(input: Any): Any?
+
   fun getValue(): Any?
 }
 
@@ -35,16 +41,15 @@ sealed class Adapter : GraphQlAdapter {
 private
 class ObjectAdapter(
     override val type: KType,
-    private val adapter: () -> Any?
+    private val adapter: () -> Model<*>
 ) : Adapter() {
 
-  private var backingField: Any? = null
+  private var backingField: Model<*>? = null
 
   override fun accept(input: Any): Boolean {
-    @Suppress("UNCHECKED_CAST")
-    backingField = (input as? Map<*, *>)?.let {
-      adapter()
-    } ?: adapter()
+    (input as? Map<*, *>)?.map {
+
+    }
     return backingField == null
   }
 
@@ -53,7 +58,12 @@ class ObjectAdapter(
   }
 
   override fun getValue(): Any? {
-    return backingField ?: adapter().also { backingField = adapter }
+    return backingField ?: if (!isNullable()) {
+      // attempt to create the value before returning null
+      adapter()
+          .let { if (it.isResolved()) it else null }
+          ?.also { backingField = it }
+    } else null
   }
 }
 
@@ -101,12 +111,12 @@ class ParsingAdapter(
 
 private
 class CollectionAdapterImpl(
-    override val type: KType,
-    override val delegateAdapter: GraphQlAdapter
+    override val delegateAdapter: GraphQlAdapter,
+    override val type: KType = delegateAdapter.type
 ) : CollectionAdapter {
 
   init {
-    require(isList()) { "Illegal property type, must be a List<*> but found '$type'"}
+    require(isList()) { "Illegal property type, must be a List<*> but found '$type'" }
   }
 
   private var backingField: List<*>? = null
