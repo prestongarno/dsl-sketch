@@ -7,6 +7,7 @@ import org.kotlinq.adapters.parser
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.DslBuilder
 import kotlin.properties.ReadOnlyProperty
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 
@@ -27,8 +28,6 @@ internal
 fun <Z> initializingProvider(name: String, init: () -> Z)
     : DslBuilderProvider<Z> = DelegateProviderImpl(name, init)
 
-
-internal
 interface DslBuilderProvider<Z>
   : DslBuilder<Z, ArgBuilder>,
     DelegateProvider<Z>

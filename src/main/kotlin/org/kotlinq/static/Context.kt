@@ -6,6 +6,7 @@ import org.kotlinq.delegates.deserializingProvider
 import org.kotlinq.delegates.parsingProvider
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.DslBuilder
+import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
@@ -46,13 +47,13 @@ class DeserializingStub(private val propertyName: String) : GraphQlPropertyStub(
 
 }
 
-class EnumStub<Z : Enum<Z>>(private val propertyName: String) : GraphQlPropertyStub() {
+class EnumStub<Z : Enum<Z>>(private val propertyName: String) : GraphQlPropertyStub(), DelegateProvider<Z> {
 
-  operator fun provideDelegate(inst: Any, property: KProperty<*>): DelegateProvider<Z> =
-      parsingProvider(propertyName, { str ->
+  override operator fun provideDelegate(inst: Any, property: KProperty<*>): ReadOnlyProperty<Any, Z> = TODO()
+/*      parsingProvider(propertyName, { str ->
         @Suppress("UNCHECKED_CAST") (property.returnType.classifier as KClass<Z>)
             .java.enumConstants.find { it.name == str }!!
-      })
+      })*/
 
   companion object {
 
