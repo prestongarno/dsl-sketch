@@ -1,6 +1,5 @@
 package org.kotlinq.adapters
 
-import org.kotlinq.adapters.GraphQlAdapter
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType

@@ -1,10 +1,18 @@
 package org.kotlinq.adapters
 
-fun <A, Z> adapter(init: (A) -> Z): GraphQlAdapter<Z> =
-    DeserializingAdapter(init)
+import kotlin.reflect.KType
 
-fun <Z> adapter(init: () -> Z): GraphQlAdapter<Z> =
-    ObjectAdapter(init)
+@Suppress("UNCHECKED_CAST")
+fun <Z> deserializer(type: KType, init: (java.io.InputStream) -> Z): GraphQlAdapter<Z> =
+    DeserializingAdapter(type, init) as GraphQlAdapter<Z>
+
+@Suppress("UNCHECKED_CAST")
+fun <Z> parser(type: KType, init: (String) -> Z): GraphQlAdapter<Z> =
+    ParsingAdapter(type, init) as GraphQlAdapter<Z>
+
+@Suppress("UNCHECKED_CAST")
+fun <Z> adapter(type: KType, init: () -> Z): GraphQlAdapter<Z> =
+    ObjectAdapter(init) as GraphQlAdapter<Z>
 
 interface GraphQlAdapter<out T> {
   fun accept(input: Any): Boolean
@@ -12,39 +20,57 @@ interface GraphQlAdapter<out T> {
 }
 
 private
-class ObjectAdapter<T>(
-    private val adapter: () -> T
-) : GraphQlAdapter<T> {
+class ObjectAdapter(
+    private val adapter: () -> Any?
+) : GraphQlAdapter<Any?> {
 
-  var _value: T? = null
+  var _value: Any? = null
 
   override fun accept(input: Any): Boolean {
     @Suppress("UNCHECKED_CAST")
     _value = (input as? Map<*, *>)?.let {
-      adapter() /* <--TODO type constraint takes map*/
+      adapter()
     } ?: _value
     return _value == null
   }
 
-  override fun getValue(): T? {
+  override fun getValue(): Any? {
     return _value
   }
 }
 
 private
-class DeserializingAdapter<in A, T>(
-    private val adapter: (A) -> T
-) : GraphQlAdapter<T> {
+class DeserializingAdapter(
+    val type: KType,
+    private val adapter: (java.io.InputStream) -> Any?
+) : GraphQlAdapter<Any?> {
 
-  var _value: T? = null
+  var _value: Any? = null
 
   override fun accept(input: Any): Boolean {
     @Suppress("UNCHECKED_CAST")
-    _value = (input as? A)?.let { adapter(it) } ?: _value
+    // todo interfaces for adapters
+    _value = (input as? Any?)?.let { adapter(it.toString().byteInputStream()) } ?: _value
     return _value == null
   }
 
-  override fun getValue(): T? {
-    return _value
+  override fun getValue() = _value
+}
+
+private
+class ParsingAdapter(
+    val type: KType,
+    private val adapter: (String) -> Any?
+) : GraphQlAdapter<Any?> {
+
+  var _value: Any? = null
+
+  override fun accept(input: Any): Boolean {
+    @Suppress("UNCHECKED_CAST")
+    // todo interfaces for adapters
+    _value = (input as? Any?)?.let { adapter(it.toString()) } ?: _value
+    return _value == null
   }
+
+  override fun getValue() = _value
 }

@@ -1,41 +1,63 @@
 package org.kotlinq.static
 
 import org.kotlinq.delegates.DelegateProvider
-import org.kotlinq.delegates.delegateProvider
+import org.kotlinq.delegates.initializingProvider
 import org.kotlinq.delegates.deserializingProvider
+import org.kotlinq.delegates.parsingProvider
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.DslBuilder
+import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
 
 
-sealed class GraphQlPropertyStub<in Z> {
+sealed class GraphQlPropertyStub {
 
   companion object {
-    inline fun <reified T : GraphQlPropertyStub<*>> create(propertyName: String): T = when (T::class) {
+    @Suppress("UNCHECKED_CAST")
+    fun <T : GraphQlPropertyStub> create(clazz: KClass<T>, propertyName: String): T = when (clazz) {
       InitializingStub::class -> InitializingStub<Any>(propertyName)
-      DeserializingStub::class -> DeserializingStub<Any>(propertyName)
+      DeserializingStub::class -> DeserializingStub(propertyName)
+      EnumStub::class -> EnumStub.create(propertyName)
       else -> null!!
     } as T
   }
 }
 
-
 class InitializingStub<in Z : Any>(
     private val propertyName: String
-) : GraphQlPropertyStub<Z>() {
+) : GraphQlPropertyStub() {
+
 
   operator fun <U : Z> invoke(
       init: () -> U
   ): DelegateProvider<U> =
-      delegateProvider(propertyName, init)
+      initializingProvider(propertyName, init)
 
 }
 
 // TODO this is where it got complicated
-class DeserializingStub<out A : Any>(private val propertyName: String) : GraphQlPropertyStub<Any>() {
+class DeserializingStub(private val propertyName: String) : GraphQlPropertyStub() {
 
   operator fun <Z> invoke(
-      init: (A) -> Z,
+      init: (java.io.InputStream) -> Z,
       block: DslBuilder<Z, ArgBuilder>.() -> Unit = {}
   ): DelegateProvider<Z> =
       deserializingProvider(propertyName, init).also(block)
+
+}
+
+class EnumStub<Z : Enum<Z>>(private val propertyName: String) : GraphQlPropertyStub() {
+
+  operator fun provideDelegate(inst: Any, property: KProperty<*>): DelegateProvider<Z> =
+      parsingProvider(propertyName, { str ->
+        @Suppress("UNCHECKED_CAST") (property.returnType.classifier as KClass<Z>)
+            .java.enumConstants.find { it.name == str }!!
+      })
+
+  companion object {
+
+    enum class None
+
+    internal fun create(name: String): EnumStub<None> = EnumStub(name)
+  }
 }

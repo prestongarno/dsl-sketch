@@ -1,11 +1,12 @@
-import org.kotlinq.static.stub
+import org.kotlinq.static.deserialized
+import org.kotlinq.static.initialized
 
 object FooDao {
-  val scalar by stub<Int>()
+  val scalar by initialized<Int>()
 }
 
 object ContextDao {
-  val foo by stub<FooDao>()
+  val foo by initialized<FooDao>()
 }
 
 
@@ -16,7 +17,7 @@ class BarImpl {
 
 fun main(args: Array<String>) {
   BarImpl().apply {
-    require(implFoo == 1000)
     require(implContextFoo == FooDao)
+    require(implFoo == 1000)
   }
 }

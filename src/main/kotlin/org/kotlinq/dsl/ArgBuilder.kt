@@ -1,7 +1,7 @@
 package org.kotlinq.dsl
 
 
-class ArgBuilder() {
+class ArgBuilder {
   private val args = mutableMapOf<String, Any>()
 
   fun take(argument: Pair<String, Any>) {

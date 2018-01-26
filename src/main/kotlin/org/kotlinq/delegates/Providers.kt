@@ -1,7 +1,9 @@
 package org.kotlinq.delegates
 
 import org.kotlinq.adapters.adapter
+import org.kotlinq.adapters.deserializer
 import org.kotlinq.adapters.graphQlProperty
+import org.kotlinq.adapters.parser
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.DslBuilder
 import kotlin.properties.ReadOnlyProperty
@@ -14,12 +16,17 @@ interface DelegateProvider<out Z> {
 }
 
 internal
-fun <A, Z> deserializingProvider(name: String, init: (A) -> Z)
+fun <Z> deserializingProvider(name: String, init: (java.io.InputStream) -> Z)
     : DslBuilderProvider<Z> = DeserializingDelegateProviderImpl(name, init)
 
 internal
-fun <Z> delegateProvider(name: String, init: () -> Z)
+fun <Z> parsingProvider(name: String, init: (String) -> Z)
+    : DslBuilderProvider<Z> = ParsingDelegateProvider(name, init)
+
+internal
+fun <Z> initializingProvider(name: String, init: () -> Z)
     : DslBuilderProvider<Z> = DelegateProviderImpl(name, init)
+
 
 internal
 interface DslBuilderProvider<Z>
@@ -27,9 +34,9 @@ interface DslBuilderProvider<Z>
     DelegateProvider<Z>
 
 private
-class DeserializingDelegateProviderImpl<in A, Z>(
+class DeserializingDelegateProviderImpl<Z>(
     val name: String,
-    val init: (A) -> Z
+    val init: (java.io.InputStream) -> Z
 ) : DslBuilderProvider<Z> {
 
   private val args: ArgBuilder = ArgBuilder()
@@ -40,9 +47,25 @@ class DeserializingDelegateProviderImpl<in A, Z>(
 
   override operator fun provideDelegate(inst: Any, property: KProperty<*>)
       : ReadOnlyProperty<Any, Z> =
-      graphQlProperty(name, property.returnType, adapter(init), default)
+      graphQlProperty(name, property.returnType, deserializer(property.returnType, init), default)
 }
 
+private
+class ParsingDelegateProvider<Z>(
+    val name: String,
+    val init: (String) -> Z,
+    override var default: Z? = null
+) : DslBuilderProvider<Z> {
+
+  val args: ArgBuilder = ArgBuilder()
+
+  override fun config(block: ArgBuilder.() -> Unit) = args.block()
+
+  override fun provideDelegate(inst: Any, property: KProperty<*>) =
+      graphQlProperty(name, property.returnType, parser(property.returnType, init))
+}
+
+private
 class DelegateProviderImpl<Z>(
     val name: String,
     val init: () -> Z
@@ -56,5 +79,5 @@ class DelegateProviderImpl<Z>(
 
   override operator fun provideDelegate(inst: Any, property: KProperty<*>)
       : ReadOnlyProperty<Any, Z> =
-      graphQlProperty(name, property.returnType, adapter(init), default)
+      graphQlProperty(name, property.returnType, adapter(property.returnType, init), default)
 }
