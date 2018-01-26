@@ -23,8 +23,9 @@ class BarImpl {
 }
 
 fun main(args: Array<String>) {
-  BarImpl().apply {
+  val foo = BarImpl()
+  foo.apply {
     require(implContextFoo == FooDao)
-    require(implFoo == 1000)
+    require(implFoo == 10000)
   }
 }

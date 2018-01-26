@@ -13,7 +13,7 @@ fun <T> graphQlProperty(
 ): GraphQlProperty<T> = object : GraphQlProperty<T> {
 
   override fun getValue(thisRef: Any, property: KProperty<*>): T =
-      adapter.getValue() ?: default ?: adapter.getValue()!!
+      adapter.getValue() ?: default!!
   override val graphqlType: String get() = type.toString()
   override val propertyName: String get() = name
   override val adapter: GraphQlAdapter<T> get() = adapter

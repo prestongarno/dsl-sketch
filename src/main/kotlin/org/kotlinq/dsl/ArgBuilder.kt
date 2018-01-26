@@ -1,6 +1,8 @@
 package org.kotlinq.dsl
 
 
+interface ArgumentSpec
+
 class ArgBuilder {
   private val args = mutableMapOf<String, Any>()
 

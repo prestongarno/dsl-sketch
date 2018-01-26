@@ -11,7 +11,7 @@ fun <Z> parser(type: KType, init: (String) -> Z): GraphQlAdapter<Z> =
     ParsingAdapter(type, init) as GraphQlAdapter<Z>
 
 @Suppress("UNCHECKED_CAST")
-fun <Z> adapter(type: KType, init: () -> Z): GraphQlAdapter<Z> =
+fun <Z> initializer(type: KType, init: () -> Z): GraphQlAdapter<Z> =
     ObjectAdapter(init) as GraphQlAdapter<Z>
 
 interface GraphQlAdapter<out T> {
@@ -30,12 +30,12 @@ class ObjectAdapter(
     @Suppress("UNCHECKED_CAST")
     _value = (input as? Map<*, *>)?.let {
       adapter()
-    } ?: _value
+    } ?: adapter()
     return _value == null
   }
 
   override fun getValue(): Any? {
-    return _value
+    return _value ?: adapter().also { _value = adapter }
   }
 }
 

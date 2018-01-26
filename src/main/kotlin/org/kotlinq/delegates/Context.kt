@@ -1,10 +1,7 @@
-package org.kotlinq.static
+package org.kotlinq.delegates
 
-import org.kotlinq.delegates.DelegateProvider
-import org.kotlinq.delegates.initializingProvider
-import org.kotlinq.delegates.deserializingProvider
-import org.kotlinq.delegates.parsingProvider
 import org.kotlinq.dsl.ArgBuilder
+import org.kotlinq.dsl.ArgumentSpec
 import org.kotlinq.dsl.DslBuilder
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
@@ -13,20 +10,30 @@ import kotlin.reflect.KProperty
 
 sealed class GraphQlPropertyStub {
 
+  abstract fun withArguments(arguments: ArgumentSpec): GraphQlPropertyStub
+
   companion object {
+
     @Suppress("UNCHECKED_CAST")
-    fun <T : GraphQlPropertyStub> create(clazz: KClass<T>, propertyName: String): T = when (clazz) {
-      InitializingStub::class -> InitializingStub<Any>(propertyName)
-      DeserializingStub::class -> DeserializingStub(propertyName)
-      EnumStub::class -> EnumStub.create(propertyName)
-      else -> null!!
-    } as T
+    internal fun <T : GraphQlPropertyStub> create(clazz: KClass<T>, propertyName: String): T =
+        when (clazz) {
+          InitializingStub::class -> InitializingStub<Any>(propertyName)
+          DeserializingStub::class -> DeserializingStub(propertyName)
+          EnumStub::class -> EnumStub.create(propertyName)
+          else -> null!!
+        } as T
   }
 }
 
-class InitializingStub<in Z : Any>(
+class PredicateStub<in A : ArgumentSpec, out T : GraphQlPropertyStub> {
+  fun withArguments(arguments: A): T = TODO()
+}
+
+class InitializingStub<in Z>(
     private val propertyName: String
 ) : GraphQlPropertyStub() {
+
+  override fun withArguments(arguments: ArgumentSpec): InitializingStub<Z> = TODO()
 
 
   operator fun <U : Z> invoke(
@@ -36,8 +43,9 @@ class InitializingStub<in Z : Any>(
 
 }
 
-// TODO this is where it got complicated
 class DeserializingStub(private val propertyName: String) : GraphQlPropertyStub() {
+
+  override fun withArguments(arguments: ArgumentSpec) = this
 
   operator fun <Z> invoke(
       init: (java.io.InputStream) -> Z,
@@ -49,11 +57,13 @@ class DeserializingStub(private val propertyName: String) : GraphQlPropertyStub(
 
 class EnumStub<Z : Enum<Z>>(private val propertyName: String) : GraphQlPropertyStub(), DelegateProvider<Z> {
 
-  override operator fun provideDelegate(inst: Any, property: KProperty<*>): ReadOnlyProperty<Any, Z> = TODO()
-/*      parsingProvider(propertyName, { str ->
+  override fun withArguments(arguments: ArgumentSpec): EnumStub<Z> = TODO()
+
+  override operator fun provideDelegate(inst: Any, property: KProperty<*>): ReadOnlyProperty<Any, Z> =
+      parsingProvider(propertyName, { str ->
         @Suppress("UNCHECKED_CAST") (property.returnType.classifier as KClass<Z>)
             .java.enumConstants.find { it.name == str }!!
-      })*/
+      }).provideDelegate(inst, property)
 
   companion object {
 

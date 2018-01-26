@@ -1,13 +1,12 @@
 package org.kotlinq.delegates
 
-import org.kotlinq.adapters.adapter
+import org.kotlinq.adapters.initializer
 import org.kotlinq.adapters.deserializer
 import org.kotlinq.adapters.graphQlProperty
 import org.kotlinq.adapters.parser
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.DslBuilder
 import kotlin.properties.ReadOnlyProperty
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 
@@ -78,5 +77,5 @@ class DelegateProviderImpl<Z>(
 
   override operator fun provideDelegate(inst: Any, property: KProperty<*>)
       : ReadOnlyProperty<Any, Z> =
-      graphQlProperty(name, property.returnType, adapter(property.returnType, init), default)
+      graphQlProperty(name, property.returnType, initializer(property.returnType, init), default)
 }
