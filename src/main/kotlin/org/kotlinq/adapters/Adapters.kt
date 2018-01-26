@@ -12,17 +12,23 @@ fun <Z> parser(type: KType, init: (String) -> Z): GraphQlAdapter<Z> =
 
 @Suppress("UNCHECKED_CAST")
 fun <Z> initializer(type: KType, init: () -> Z): GraphQlAdapter<Z> =
-    ObjectAdapter(init) as GraphQlAdapter<Z>
+    ObjectAdapter(type, init) as GraphQlAdapter<Z>
 
 interface GraphQlAdapter<out T> {
+  val type: KType
   fun accept(input: Any): Boolean
   fun getValue(): T?
 }
 
+sealed class Adapter : GraphQlAdapter<Any?> {
+  override fun toString() = "Adapter::$type"
+}
+
 private
 class ObjectAdapter(
+    override val type: KType,
     private val adapter: () -> Any?
-) : GraphQlAdapter<Any?> {
+) : Adapter() {
 
   var _value: Any? = null
 
@@ -41,9 +47,9 @@ class ObjectAdapter(
 
 private
 class DeserializingAdapter(
-    val type: KType,
+    override val type: KType,
     private val adapter: (java.io.InputStream) -> Any?
-) : GraphQlAdapter<Any?> {
+) : Adapter() {
 
   var _value: Any? = null
 
@@ -59,9 +65,9 @@ class DeserializingAdapter(
 
 private
 class ParsingAdapter(
-    val type: KType,
+    override val type: KType,
     private val adapter: (String) -> Any?
-) : GraphQlAdapter<Any?> {
+) : Adapter() {
 
   var _value: Any? = null
 

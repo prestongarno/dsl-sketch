@@ -22,6 +22,8 @@ sealed class GraphQlPropertyStub(val arguments: ArgumentSpec) {
           InitializingStub::class -> InitializingStub<Any>(propertyName, args)
           DeserializingStub::class -> DeserializingStub(propertyName, args)
           EnumStub::class -> EnumStub.create(propertyName, args)
+          DisjointCollectionStub::class -> DisjointCollectionStub<Any, List<Any>>(propertyName, args)
+          Disjoint::class -> Disjoint<Any>(propertyName, args)
           else -> null!!
         } as T
   }
@@ -41,13 +43,19 @@ class PredicateStub<in A : ArgumentSpec, out T : GraphQlPropertyStub>(
   fun withArguments(arguments: A): T = create(clazz, name, arguments)
 }
 
-class DisjointCollectionStub<T, out U : List<*>>(args: ArgumentSpec = ArgBuilder()) : GraphQlPropertyStub(args) {
+class DisjointCollectionStub<T, out U : List<*>>(private val name: String, args: ArgumentSpec = ArgBuilder()) : GraphQlPropertyStub(args) {
 
-  override fun withArguments(arguments: ArgumentSpec): DisjointCollectionStub<T, U> = DisjointCollectionStub(arguments)
+  override fun withArguments(arguments: ArgumentSpec): DisjointCollectionStub<T, U> = DisjointCollectionStub(name, arguments)
 
-  operator fun invoke(init: () -> T): DelegateProvider<U> = TODO()
+  @Suppress("UNCHECKED_CAST")
+  operator fun invoke(init: () -> T): DelegateProvider<U> =
+      initializingProvider(name, init) as DelegateProvider<U>
 
-  operator fun invoke(init: () -> T, block: DslBuilder<T, ArgumentSpec>.() -> Unit): DelegateProvider<U> = TODO()
+  @Suppress("UNCHECKED_CAST")
+  operator fun invoke(init: () -> T, block: DslBuilder<T, ArgumentSpec>.() -> Unit): DelegateProvider<U> =
+      (initializingProvider(name, init) as DslBuilder<T, ArgumentSpec>)
+          .apply(block)
+          .let { it as DelegateProvider<U> }
 }
 
 class InitializingStub<in Z>(

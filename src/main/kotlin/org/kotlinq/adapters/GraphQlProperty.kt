@@ -18,15 +18,17 @@ fun <T> graphQlProperty(
       override fun getValue(thisRef: Any, property: KProperty<*>): T =
           adapter.getValue() ?: default!!
 
-      override val graphqlType: String get() = type.toString()
-      override val propertyName: String get() = name
-      override val adapter: GraphQlAdapter<T> get() = adapter
+      override val kotlinType get() = adapter.type
+      override val propertyName get() = name
+      override val adapter get() = adapter
+
+      override fun toString() = "GraphQlProperty::$name ($adapter)"
 
     })
 
 internal
 interface GraphQlProperty<out T> : ReadOnlyProperty<Any, T> {
-  val graphqlType: String
+  val kotlinType: KType
   val propertyName: String
   val adapter: GraphQlAdapter<T>
 }

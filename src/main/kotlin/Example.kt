@@ -37,7 +37,7 @@ class BarImpl : Model<ContextDao>(ContextDao) {
   val implContextFoo by ContextDao.foo { FooDao }
   val enumMapped by ContextDao.response
 
-  val bazImpl by (ContextDao.baz.withArguments(ContextDao.BazArgs())).invoke({ -1 }) {
+  val bazImpl by ContextDao.baz.withArguments(ContextDao.BazArgs())({ -1 }) {
     default = 9000
     config {
       take("Hello" to "world")
@@ -48,7 +48,9 @@ class BarImpl : Model<ContextDao>(ContextDao) {
 fun main(args: Array<String>) {
   val foo = BarImpl()
 
-  foo.properties.forEach { println(it.propertyName) }
+  foo.properties.forEach {
+    println(it.kotlinType)
+  }
 
   foo.apply {
     require(implContextFoo == FooDao)

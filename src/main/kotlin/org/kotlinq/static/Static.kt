@@ -53,7 +53,8 @@ interface CollectionProvider<T, out U : List<*>> : Provider<DisjointCollectionSt
 
   companion object {
     fun <T, U : List<*>> new(builder: DisjointDelegateBuilder<T, U>) = object : CollectionProvider<T, U> {
-      override fun provideDelegate(inst: Any, property: KProperty<*>) = readOnly(DisjointCollectionStub<T, U>())
+      override fun provideDelegate(inst: Any, property: KProperty<*>) =
+          readOnly(DisjointCollectionStub<T, U>(property.name))
     }
   }
 }
