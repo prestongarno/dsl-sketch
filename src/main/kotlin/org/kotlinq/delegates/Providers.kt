@@ -1,9 +1,10 @@
 package org.kotlinq.delegates
 
-import org.kotlinq.adapters.initializer
 import org.kotlinq.adapters.deserializer
 import org.kotlinq.adapters.graphQlProperty
+import org.kotlinq.adapters.initializer
 import org.kotlinq.adapters.parser
+import org.kotlinq.api.Model
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.DslBuilder
 import kotlin.properties.ReadOnlyProperty
@@ -11,7 +12,7 @@ import kotlin.reflect.KProperty
 
 
 interface DelegateProvider<out Z> {
-  operator fun provideDelegate(inst: Any, property: KProperty<*>)
+  operator fun provideDelegate(inst: Model<*>, property: KProperty<*>)
       : ReadOnlyProperty<Any, Z>
 }
 
@@ -43,9 +44,14 @@ class DeserializingDelegateProviderImpl<Z>(
 
   override fun config(block: ArgBuilder.() -> Unit) = args.block()
 
-  override operator fun provideDelegate(inst: Any, property: KProperty<*>)
-      : ReadOnlyProperty<Any, Z> =
-      graphQlProperty(name, property.returnType, deserializer(property.returnType, init), default)
+  override operator fun provideDelegate(inst: Model<*>, property: KProperty<*>)
+      : ReadOnlyProperty<Any, Z> = graphQlProperty(
+      inst,
+      name,
+      property.returnType,
+      deserializer(property.returnType, init),
+      default
+  )
 }
 
 private
@@ -59,8 +65,13 @@ class ParsingDelegateProvider<Z>(
 
   override fun config(block: ArgBuilder.() -> Unit) = args.block()
 
-  override fun provideDelegate(inst: Any, property: KProperty<*>) =
-      graphQlProperty(name, property.returnType, parser(property.returnType, init))
+  override fun provideDelegate(inst: Model<*>, property: KProperty<*>) =
+      graphQlProperty(
+          inst,
+          name,
+          property.returnType,
+          parser(property.returnType, init)
+      )
 }
 
 private
@@ -75,7 +86,12 @@ class DelegateProviderImpl<Z>(
 
   override fun config(block: ArgBuilder.() -> Unit) = args.block()
 
-  override operator fun provideDelegate(inst: Any, property: KProperty<*>)
-      : ReadOnlyProperty<Any, Z> =
-      graphQlProperty(name, property.returnType, initializer(property.returnType, init), default)
+  override operator fun provideDelegate(inst: Model<*>, property: KProperty<*>)
+      : ReadOnlyProperty<Any, Z> = graphQlProperty(
+      inst,
+      name,
+      property.returnType,
+      initializer(property.returnType, init),
+      default
+  )
 }

@@ -1,6 +1,7 @@
 package org.kotlinq.static
 
 import org.kotlinq.delegates.DeserializingStub
+import org.kotlinq.delegates.DisjointCollectionStub
 import org.kotlinq.delegates.EnumStub
 import org.kotlinq.delegates.GraphQlPropertyStub
 import org.kotlinq.delegates.InitializingStub
@@ -11,23 +12,51 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 
-
 fun <T> readOnly(value: T): ReadOnlyProperty<Any, T> = ReadOnlyImpl(value)
 
 interface Provider<out T> {
   operator fun provideDelegate(inst: Any, property: KProperty<*>): ReadOnlyProperty<Any, T>
 }
 
-interface ConfiguredInitializedProvider<in A : ArgumentSpec, in T> : Provider<PredicateStub<A, InitializingStub<T>>> {
+interface ConfiguredProvider<in A : ArgumentSpec, out T : GraphQlPropertyStub> : Provider<PredicateStub<A, T>> {
   override operator fun provideDelegate(inst: Any, property: KProperty<*>)
-      : ReadOnlyProperty<Any, PredicateStub<A, InitializingStub<T>>>
+      : ReadOnlyProperty<Any, PredicateStub<A, T>>
 }
 
 interface PredicateProvider<in A : ArgumentSpec, out T : GraphQlPropertyStub> {
+
   operator fun provideDelegate(inst: Any, property: KProperty<*>): ReadOnlyProperty<Any, PredicateStub<A, T>>
+
+  companion object {
+
+    internal fun <A : ArgumentSpec> using() = Builder<A>()
+
+    internal class Builder<in A : ArgumentSpec> {
+      fun <T : GraphQlPropertyStub> build(clazz: KClass<T>): PredicateProvider<A, T> =
+          createPredicateProvider(clazz)
+    }
+
+    private
+    fun <A : ArgumentSpec, T : GraphQlPropertyStub> createPredicateProvider(clazz: KClass<T>) = object : PredicateProvider<A, T> {
+      override fun provideDelegate(inst: Any, property: KProperty<*>) =
+          readOnly(PredicateStub<A, T>(property.name, clazz))
+    }
+
+  }
 }
 
+interface CollectionProvider<T, out U : List<*>> : Provider<DisjointCollectionStub<T, U>> {
+  override operator fun provideDelegate(
+      inst: Any,
+      property: KProperty<*>
+  ): ReadOnlyProperty<Any, DisjointCollectionStub<T, U>>
 
+  companion object {
+    fun <T, U : List<*>> new(builder: DisjointDelegateBuilder<T, U>) = object : CollectionProvider<T, U> {
+      override fun provideDelegate(inst: Any, property: KProperty<*>) = readOnly(DisjointCollectionStub<T, U>())
+    }
+  }
+}
 
 internal
 fun <T : Any> deserialized(): Provider<DeserializingStub> =
