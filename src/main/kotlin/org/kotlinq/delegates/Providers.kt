@@ -12,22 +12,22 @@ import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
 
-interface DelegateProvider<out Z> {
+interface GraphQlPropertyProvider<out Z> {
   operator fun provideDelegate(inst: Model<*>, property: KProperty<*>)
       : ReadOnlyProperty<Any, Z>
 }
 
 internal
 fun <Z> deserializingProvider(name: String, init: (java.io.InputStream) -> Z)
-    : DslBuilderProvider<Z> = DeserializingDelegateProviderImpl(name, init)
+    : DslBuilderProvider<Z> = DeserializingGraphQlPropertyProviderImpl(name, init)
 
 internal
 fun <Z> parsingProvider(name: String, init: (String) -> Z?)
-    : DslBuilderProvider<Z> = ParsingDelegateProvider(name, init)
+    : DslBuilderProvider<Z> = ParsingGraphQlPropertyProvider(name, init)
 
 internal
 fun <Z: Model<*>> initializingProvider(name: String, init: () -> Z)
-    : DslBuilderProvider<Z> = DelegateProviderImpl(name, init)
+    : DslBuilderProvider<Z> = GraphQlPropertyProviderImpl(name, init)
 
 @Suppress("UNCHECKED_CAST")
 internal
@@ -35,16 +35,16 @@ fun <U : List<*>> initializingProvider(
     name: String,
     init: () -> Model<*>,
     block: DslBuilder<Model<*>, ArgumentSpec>.() -> Unit
-): DelegateProvider<U> =
-    DelegateProviderImpl(name, init)
-        .apply(block) as DelegateProvider<U>
+): GraphQlPropertyProvider<U> =
+    GraphQlPropertyProviderImpl(name, init)
+        .apply(block) as GraphQlPropertyProvider<U>
 
 interface DslBuilderProvider<Z>
   : DslBuilder<Z, ArgBuilder>,
-    DelegateProvider<Z>
+    GraphQlPropertyProvider<Z>
 
 private
-class DeserializingDelegateProviderImpl<Z>(
+class DeserializingGraphQlPropertyProviderImpl<Z>(
     val name: String,
     val init: (java.io.InputStream) -> Z
 ) : DslBuilderProvider<Z> {
@@ -65,7 +65,7 @@ class DeserializingDelegateProviderImpl<Z>(
 }
 
 private
-class ParsingDelegateProvider<Z>(
+class ParsingGraphQlPropertyProvider<Z>(
     val name: String,
     val init: (String) -> Z?,
     override var default: Z? = null
@@ -84,7 +84,7 @@ class ParsingDelegateProvider<Z>(
 }
 
 private
-class DelegateProviderImpl<Z : Model<*>>(
+class GraphQlPropertyProviderImpl<Z : Model<*>>(
     val name: String,
     val init: () -> Z
 ) : DslBuilderProvider<Z> {

@@ -61,6 +61,7 @@ class ContextDaoQuery : Model<ContextDao>(model = ContextDao) {
 
 fun main(args: Array<String>) {
 
+  val a = ::ContextDaoQuery
   val foo = ContextDaoQuery()
 
   require(foo.properties.values.find {

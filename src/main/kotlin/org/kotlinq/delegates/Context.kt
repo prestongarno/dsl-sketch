@@ -5,10 +5,12 @@ import org.kotlinq.delegates.GraphQlPropertyStub.Companion.create
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.ArgumentSpec
 import org.kotlinq.dsl.DslBuilder
-import org.kotlinq.static.readOnly
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
+import kotlin.reflect.full.isSubclassOf
+
+internal typealias BuilderBlock<Z, A> = DslBuilder<Z, A>.() -> Unit
 
 sealed class GraphQlPropertyStub(val arguments: ArgumentSpec) {
 
@@ -22,11 +24,11 @@ sealed class GraphQlPropertyStub(val arguments: ArgumentSpec) {
           InitializingStub::class -> InitializingStub<Any>(propertyName, args)
           DeserializingStub::class -> DeserializingStub(propertyName, args)
           EnumStub::class -> EnumStub.create(propertyName, args)
-          DisjointCollectionStub::class -> DisjointCollectionStub<Any>(propertyName, args)
-          DisjointCollectionStub1::class -> DisjointCollectionStub1<Any>(propertyName, args)
-          DisjointCollectionStub2::class -> DisjointCollectionStub2<Any>(propertyName, args)
           Disjoint::class -> Disjoint<Any>(propertyName, args)
-          else -> throw UnsupportedOperationException("Unknown class $clazz")
+          else -> {
+            require(clazz.isSubclassOf(CollectionPropertyStub::class)) { "Unknown class $clazz" }
+            CollectionPropertyStub.create(propertyName, args, clazz as KClass<CollectionPropertyStub>)
+          }
         } as T
   }
 
@@ -34,7 +36,7 @@ sealed class GraphQlPropertyStub(val arguments: ArgumentSpec) {
 
     override fun withArguments(arguments: ArgumentSpec): InitializingStub<Z> = TODO()
 
-    operator fun <U : Model<Z>> invoke(init: () -> U): DelegateProvider<U?> = initializingProvider(propertyName, init)
+    operator fun <U : Model<Z>> invoke(init: () -> U): GraphQlPropertyProvider<U?> = initializingProvider(propertyName, init)
   }
 }
 
@@ -54,7 +56,7 @@ class InitializingStub<in Z>(
 
   operator fun <U : Model<Z>> invoke(
       init: () -> U
-  ): DelegateProvider<U> =
+  ): GraphQlPropertyProvider<U> =
       initializingProvider(propertyName, init)
 
 
@@ -70,7 +72,7 @@ class DeserializingStub(
   operator fun <Z> invoke(
       init: (java.io.InputStream) -> Z,
       block: DslBuilder<Z, ArgBuilder>.() -> Unit = {}
-  ): DelegateProvider<Z> =
+  ): GraphQlPropertyProvider<Z> =
       deserializingProvider(propertyName, init).also(block)
 
 }
@@ -78,7 +80,7 @@ class DeserializingStub(
 class EnumStub<Z : Enum<Z>>(
     private val propertyName: String,
     args: ArgumentSpec = ArgBuilder()
-) : GraphQlPropertyStub(args), DelegateProvider<Z> {
+) : GraphQlPropertyStub(args), GraphQlPropertyProvider<Z> {
 
   override fun withArguments(arguments: ArgumentSpec): EnumStub<Z> = EnumStub(propertyName, arguments)
 
@@ -101,7 +103,14 @@ class EnumStub<Z : Enum<Z>>(
   }
 }
 
-sealed class DisjointCollection(
+/**
+ * Supports GraphQL stubs for n-dimensional arrays
+ *
+ * It supports retention of [Model] implementation type information up to a [List] of [List] of [Model]s,
+ * any higher than that, then the resulting [List] root type arguments will be erased to [Model] type with the
+ * static GraphQL type constraints
+ */
+sealed class CollectionPropertyStub(
     internal val name: String,
     args: ArgumentSpec = ArgBuilder()
 ) : GraphQlPropertyStub(args) {
@@ -109,68 +118,96 @@ sealed class DisjointCollection(
   companion object {
 
     @Suppress("UNCHECKED_CAST")
-    internal fun <T : DisjointCollection> create(name: String, args: ArgumentSpec, clazz: KClass<T>)
-        : ReadOnlyProperty<Any, T> = readOnly(when (clazz) {
-      DisjointCollectionStub::class -> DisjointCollectionStub<Any>(name, args)
-      DisjointCollectionStub1::class -> DisjointCollectionStub1<Any>(name, args)
+    internal fun <T : CollectionPropertyStub> create(name: String, args: ArgumentSpec, clazz: KClass<T>)
+        : T = when (clazz) {
+      CollectionStub1::class -> CollectionStub1<Any>(name, args)
+      CollectionStub2::class -> CollectionStub2<Any>(name, args)
+      CollectionStubN::class -> CollectionStubN.from(CollectionStub2<Any>(name, args))
       else -> throw IllegalArgumentException()
-    } as T)
+    } as T
   }
 
+
+  internal class Builder<X, T : List<List<List<*>>>>(val token: T) {
+
+    fun asList(): Builder<X, List<T>> = Builder(listOf(token))
+
+    fun build(name: String, args: ArgumentSpec = ArgBuilder())
+        : CollectionStubN<X, T> = CollectionStubN.explicit<X, T>(name, ArgBuilder(), this)
+  }
 }
 
-class DisjointCollectionStub<T>(
+class CollectionStub1<T>(
     name: String,
     args: ArgumentSpec = ArgBuilder()
-) : DisjointCollection(name, args) {
+) : CollectionPropertyStub(name, args) {
 
   override fun withArguments(arguments: ArgumentSpec)
-      : DisjointCollectionStub<T> = DisjointCollectionStub(name, arguments)
+      : CollectionStub1<T> = CollectionStub1(name, arguments)
 
   operator fun <Z : Model<T>> invoke(init: () -> Z)
-      : DelegateProvider<List<Z>> = collectionProvider(name, init)
+      : GraphQlPropertyProvider<List<Z>> = collectionProvider(name, init)
 
-  operator fun <Z : Model<T>> invoke(init: () -> Z, block: DslBuilder<Z, ArgumentSpec>.() -> Unit)
-      : DelegateProvider<List<Z>> = collectionProvider(name, init, block)
+  operator fun <Z : Model<T>> invoke(init: () -> Z, block: BuilderBlock<Z, ArgumentSpec>)
+      : GraphQlPropertyProvider<List<Z>> = collectionProvider(name, init, block)
 }
 
-class DisjointCollectionStub1<T>(
+class CollectionStub2<T>(
     name: String,
     args: ArgumentSpec = ArgBuilder()
-) : DisjointCollection(name, args) {
+) : CollectionPropertyStub(name, args) {
 
   override fun withArguments(arguments: ArgumentSpec)
-      : DisjointCollectionStub1<T> = DisjointCollectionStub1(name, arguments)
+      : CollectionStub2<T> = CollectionStub2(name, arguments)
 
   operator fun <Z : Model<T>> invoke(init: () -> Z)
-      : DelegateProvider<List<List<Z>>> = collectionProvider(name, init)
+      : GraphQlPropertyProvider<List<List<Z>>> = collectionProvider(name, init)
 
-  operator fun <Z : Model<T>> invoke(init: () -> Z, block: DslBuilder<Z, ArgumentSpec>.() -> Unit)
-      : DelegateProvider<List<List<Z>>> = collectionProvider(name, init, block)
+  operator fun <Z : Model<T>> invoke(init: () -> Z, block: BuilderBlock<Z, ArgumentSpec>)
+      : GraphQlPropertyProvider<List<List<Z>>> = collectionProvider(name, init, block)
 }
 
-class DisjointCollectionStub2<T>(
+class CollectionStubN<in X, T : List<List<List<*>>>> private constructor(
     name: String,
-    args: ArgumentSpec = ArgBuilder()
-) : DisjointCollection(name, args) {
+    args: ArgumentSpec = ArgBuilder(),
+    token: CollectionPropertyStub.Builder<*, T>? = null
+) : CollectionPropertyStub(name, args) {
 
   override fun withArguments(arguments: ArgumentSpec)
-      : DisjointCollectionStub<T> = DisjointCollectionStub(name, arguments)
+      : CollectionStub1<T> = CollectionStub1(name, arguments)
 
-  operator fun <Z : Model<T>> invoke(init: () -> Z)
-      : DelegateProvider<List<List<List<Z>>>> = collectionProvider(name, init)
+  operator fun <Z : Model<X>> invoke(init: () -> Z)
+      : GraphQlPropertyProvider<T> = collectionProvider(name, init)
 
-  operator fun <Z : Model<T>> invoke(init: () -> Z, block: DslBuilder<Z, ArgumentSpec>.() -> Unit)
-      : DelegateProvider<List<List<List<Z>>>> = collectionProvider(name, init, block)
+  operator fun <Z : Model<X>> invoke(init: () -> Z, block: BuilderBlock<Z, ArgumentSpec>)
+      : GraphQlPropertyProvider<T> = collectionProvider(name, init, block)
+
+  companion object {
+
+    internal
+    fun <X> from(ancestor: CollectionStub2<X>)
+        : CollectionStubN<X, List<List<List<Model<X>>>>>
+        = CollectionStubN(ancestor.name, ancestor.arguments)
+
+    internal
+    fun <X, T : List<List<List<*>>>> explicit(
+        name: String,
+        args: ArgBuilder = ArgBuilder(),
+        token: CollectionPropertyStub.Builder<X, T>
+    ): CollectionStubN<X, T> = CollectionStubN(name, args, token)
+  }
 }
 
-private fun <U : List<*>> collectionProvider(name: String, init: () -> Model<*>): DelegateProvider<U> =
+
+private
+fun <U : List<*>> collectionProvider(name: String, init: () -> Model<*>): GraphQlPropertyProvider<U> =
     collectionProvider(name, init, { /*nothing */ })
 
 @Suppress("UNCHECKED_CAST")
-private fun <T : Model<*>, U : List<*>> collectionProvider(
+private
+fun <T : Model<*>, U : List<*>> collectionProvider(
     name: String,
     init: () -> T,
     block: DslBuilder<T, ArgumentSpec>.() -> Unit
-): DelegateProvider<U> =
+): GraphQlPropertyProvider<U> =
     initializingProvider(name, init, block as DslBuilder<Model<*>, ArgumentSpec>.() -> Unit)

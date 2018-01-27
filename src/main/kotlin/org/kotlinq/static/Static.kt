@@ -1,7 +1,9 @@
 package org.kotlinq.static
 
+import org.kotlinq.delegates.CollectionPropertyStub
+import org.kotlinq.delegates.CollectionStub1
+import org.kotlinq.delegates.CollectionStubN
 import org.kotlinq.delegates.DeserializingStub
-import org.kotlinq.delegates.DisjointCollection
 import org.kotlinq.delegates.EnumStub
 import org.kotlinq.delegates.GraphQlPropertyStub
 import org.kotlinq.delegates.InitializingStub
@@ -13,6 +15,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 
+internal
 fun <T> readOnly(value: T): ReadOnlyProperty<Any, T> = ReadOnlyImpl(value)
 
 interface Provider<out T> {
@@ -21,9 +24,21 @@ interface Provider<out T> {
   companion object {
 
     internal
-    fun <T : DisjointCollection, Z> disjoint(builder: DisjointDelegateBuilder<T, Z>) = object : Provider<T> {
-      override fun provideDelegate(inst: Any, property: KProperty<*>) = DisjointCollection.create(property.name, ArgBuilder(), builder.clazz)
-    }
+    fun <T> provideCollection(builder: CollectionPropertyBuilder<T>): Provider<CollectionStub1<T>> =
+
+        object : Provider<CollectionStub1<T>> {
+
+          override fun provideDelegate(inst: Any, property: KProperty<*>)
+              : ReadOnlyProperty<Any, CollectionStub1<T>> =
+              readOnly(CollectionStub1(property.name, ArgBuilder()))
+        }
+
+    internal
+    fun <Z, T : List<List<List<*>>>> nDimensional(builder: CollectionPropertyStub.Builder<Z, T>) =
+        object : Provider<CollectionStubN<Z, T>> {
+          override fun provideDelegate(inst: Any, property: KProperty<*>) =
+              readOnly(builder.build(property.name, ArgBuilder()))
+        }
 
   }
 }
