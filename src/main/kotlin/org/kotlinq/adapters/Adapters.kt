@@ -5,7 +5,6 @@ import org.kotlinq.adapters.validation.isList
 import org.kotlinq.adapters.validation.isNullable
 import org.kotlinq.api.Model
 import kotlin.reflect.KType
-import kotlin.reflect.full.isSubclassOf
 
 fun <Z> deserializer(type: KType, init: (java.io.InputStream) -> Z): GraphQlAdapter =
     DeserializingAdapter(type, init)
@@ -16,8 +15,13 @@ fun <Z> parser(type: KType, init: (String) -> Z): GraphQlAdapter =
 fun <Z : Model<*>> initializer(type: KType, init: () -> Z): GraphQlAdapter =
     ObjectAdapter(type, init)
 
-fun <T: GraphQlAdapter> T.asCollection(): GraphQlAdapter =
-    if (type.isCollection()) CollectionAdapterImpl(this) else this
+fun <T : GraphQlAdapter> T.asCollection(): GraphQlAdapter {
+  var adapter: GraphQlAdapter = this
+  for (i in 1..type.dimensions()) {
+    adapter = CollectionAdapterImpl(adapter)
+  }
+  return adapter
+}
 
 interface GraphQlAdapter {
   val type: KType
@@ -56,7 +60,13 @@ class ObjectAdapter(
   }
 
   override fun transform(input: Any): Any? {
-    TODO("not implemented")
+    return (input as? Map<*, *>)?.entries?.let { entries ->
+      val init = adapter()
+      entries.forEach { (k, v) ->
+        init.properties["$k"]?.adapter?.accept(v ?: Unit)
+      }
+      init
+    }
   }
 
   override fun getValue(): Any? {
@@ -125,27 +135,35 @@ class CollectionAdapterImpl(
   val dimensions = let {
     var count = 0
     var ktype: KType? = type
-    while(ktype?.isCollection() == true)
+    while (ktype?.isCollection() == true)
       ktype = ktype.arguments.firstOrNull()?.type.also { count++ }
     count
   }
 
   override fun accept(input: Any): Boolean {
 
-    backingField = (input as? Collection<*>)
+    backingField = (input as? List<*>)
         ?.filterNotNull()
-        ?.map(delegateAdapter::transform)
-        ?: transform(listOf(input))
+        ?.map { delegateAdapter.transform(it) }
         ?: if (!isNullable()) emptyList<Any>() else null
 
     return isNullable() || backingField != null
   }
 
-  override fun transform(input: Any): List<*>? = (input as? Collection<*>)
+  override fun transform(input: Any): List<*>? = (input as? List<*>)
       ?.filterNotNull()
       ?.map(delegateAdapter::transform)
       ?: if (!isNullable()) emptyList<Any>() else null
 
   override fun getValue() = backingField ?: emptyList<Any?>()
 
+}
+
+private
+fun KType.dimensions(): Int {
+  var count = 0
+  var ktype: KType? = this
+  while (ktype?.isCollection() == true)
+    ktype = ktype.arguments.firstOrNull()?.type.also { count++ }
+  return count
 }

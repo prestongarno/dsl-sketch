@@ -13,48 +13,64 @@ object FooDao {
 }
 
 object ContextDao {
-  val foo by initialized<FooDao>()
+
   val response by enumMapper<Response>()
 
-  val baz by schema<String>()
+  val baz by schema<BasicModel>()
       .asList()
       .asList()
       .build()
+
+  val bazWithArgs by schema<BasicModel>()
+      .asList()
+      .asList()
+      .requiringArguments<BazArgs>()
+      .build()
+
+  val singleNestedListOfMode by schema<BasicModel>().asList().build()
 
   class BazArgs : ArgBuilder() {
     var stringArgumentOptional: String? = null
   }
 }
 
+object BasicModel {
+  val response by enumMapper<Response>()
+}
 
-class ModelInt : Model<String>("Hello world")
+class ModelInt : Model<BasicModel>(model = BasicModel) {
+  val parsedResponse by model.response
+}
 
-class BarImpl : Model<ContextDao>(ContextDao) {
-  //val implFoo by FooDao.scalar({ 10000 })
-  //val implContextFoo by ContextDao.foo { FooDao }
-  val enumMapped by ContextDao.response
+class BarImpl : Model<ContextDao>(model = ContextDao) {
 
-  val bazImpl by ContextDao.baz(::ModelInt) {
-    println(this::class)
-    config {
-      take("Hello" to "world")
-    }
-  }
+  val enumMapped by model.response
+
+  val bazImpl by model.baz(::ModelInt)
+
+  val bazArgsImpl by model.bazWithArgs
+      .withArguments(ContextDao.BazArgs())(::ModelInt)
+
+  val singleList by model.singleNestedListOfMode(::ModelInt)
 }
 
 fun main(args: Array<String>) {
   val foo = BarImpl()
 
   foo.properties.values.forEach {
-    println(it.kotlinType)
-    if (it.propertyName == "response") {
-      require(it.adapter.accept("NO"))
-      println(it.adapter.getValue())
+    println(it.propertyName + ": " + it.kotlinType)
+    when {
+      it.propertyName == "response" -> require(it.adapter.accept("NO"))
+      it.propertyName == "baz" -> require(it.adapter.accept(listOf(listOf(mapOf("response" to "NO")))))
+      it.propertyName == "bazWithArgs" -> require(it.adapter.accept(listOf(listOf(mapOf("response" to "YES")))))
+      it.propertyName == "singleNestedListOfMode " -> require(it.adapter.accept(listOf(mapOf("response" to "YES"))))
     }
   }
 
   foo.apply {
     require(enumMapped == Response.NO)
-    require(bazImpl.isEmpty())
+    require(bazImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.NO)
+    require(bazArgsImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.YES)
+    require(singleList.firstOrNull()?.parsedResponse == Response.YES)
   }
 }

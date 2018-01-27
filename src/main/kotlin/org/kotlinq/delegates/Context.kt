@@ -27,7 +27,7 @@ sealed class GraphQlPropertyStub(val arguments: ArgumentSpec) {
           DisjointCollectionStub1::class -> DisjointCollectionStub1<Any>(propertyName, args)
           DisjointCollectionStub2::class -> DisjointCollectionStub2<Any>(propertyName, args)
           Disjoint::class -> Disjoint<Any>(propertyName, args)
-          else -> null!!
+          else -> throw UnsupportedOperationException("Unknown class $clazz")
         } as T
   }
 
@@ -85,15 +85,19 @@ class EnumStub<Z : Enum<Z>>(
 
   override operator fun provideDelegate(inst: Model<*>, property: KProperty<*>): ReadOnlyProperty<Any, Z> =
       parsingProvider(propertyName, { str ->
-        @Suppress("UNCHECKED_CAST") (property.returnType.classifier as KClass<Z>)
-            .java.enumConstants.find { it.name == str }!!
+        @Suppress("UNCHECKED_CAST")
+        (property.returnType.classifier as? KClass<Z>)
+            ?.java?.enumConstants?.find { it.name == str }
       }).provideDelegate(inst, property)
 
   companion object {
 
     enum class None
 
-    internal fun create(name: String, args: ArgumentSpec): EnumStub<None> = EnumStub(name)
+    internal fun create(
+        name: String,
+        args: ArgumentSpec = ArgBuilder()
+    ): EnumStub<None> = EnumStub(name, args)
 
   }
 }
@@ -161,21 +165,6 @@ class DisjointCollectionStub2<T>(
       : DelegateProvider<List<List<List<Z>>>> = collectionProvider(name, init, block)
 }
 
-class DisjointCollectionStub3<T>(
-    name: String,
-    args: ArgumentSpec = ArgBuilder()
-) : DisjointCollection(name, args) {
-
-  override fun withArguments(arguments: ArgumentSpec)
-      : DisjointCollectionStub<T> = DisjointCollectionStub(name, arguments)
-
-  operator fun <Z : Model<T>> invoke(init: () -> Z)
-      : DelegateProvider<List<List<List<Z>>>> = collectionProvider(name, init)
-
-  operator fun <Z : Model<T>> invoke(init: () -> Z, block: DslBuilder<Z, ArgumentSpec>.() -> Unit)
-      : DelegateProvider<List<List<List<Z>>>> = collectionProvider(name, init, block)
-}
-
 private fun <U : List<*>> collectionProvider(name: String, init: () -> Model<*>): DelegateProvider<U> =
     collectionProvider(name, init, { /*nothing */ })
 
@@ -185,4 +174,4 @@ private fun <T : Model<*>, U : List<*>> collectionProvider(
     init: () -> T,
     block: DslBuilder<T, ArgumentSpec>.() -> Unit
 ): DelegateProvider<U> =
-    initializingProvider<U>(name, init, block as DslBuilder<Model<*>, ArgumentSpec>.() -> Unit)
+    initializingProvider(name, init, block as DslBuilder<Model<*>, ArgumentSpec>.() -> Unit)

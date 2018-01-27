@@ -4,7 +4,7 @@ import org.kotlinq.adapters.GraphQlProperty
 import org.kotlinq.adapters.validation.isNullable
 
 
-open class Model<out T>(val type: T) {
+open class Model<out T>(val model: T) {
 
   internal
   val properties = mutableMapOf<String, GraphQlProperty<*>>()

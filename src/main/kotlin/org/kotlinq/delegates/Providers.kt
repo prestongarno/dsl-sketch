@@ -22,7 +22,7 @@ fun <Z> deserializingProvider(name: String, init: (java.io.InputStream) -> Z)
     : DslBuilderProvider<Z> = DeserializingDelegateProviderImpl(name, init)
 
 internal
-fun <Z> parsingProvider(name: String, init: (String) -> Z)
+fun <Z> parsingProvider(name: String, init: (String) -> Z?)
     : DslBuilderProvider<Z> = ParsingDelegateProvider(name, init)
 
 internal
@@ -67,7 +67,7 @@ class DeserializingDelegateProviderImpl<Z>(
 private
 class ParsingDelegateProvider<Z>(
     val name: String,
-    val init: (String) -> Z,
+    val init: (String) -> Z?,
     override var default: Z? = null
 ) : DslBuilderProvider<Z> {
 
