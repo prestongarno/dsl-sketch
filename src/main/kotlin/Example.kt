@@ -20,18 +20,20 @@ object ContextDao {
 
   val response by enumMapper<Response>()
 
-  val baz by schema<BasicModel>()
+  val model2D by schema<BasicModel>()
       .asList()
       .asList()
       .build()
 
-  val bazWithArgs by schema<BasicModel>()
+  val model2DWithArgs by schema<BasicModel>()
       .asList()
       .asList()
       .requiringArguments<BazArgs>()
       .build()
 
-  val singleNestedListOfMode by schema<BasicModel>().asList().build()
+  val singleNestedListOfMode by schema<BasicModel>()
+      .asList()
+      .build()
 
   class BazArgs : ArgBuilder() {
     var stringArgumentOptional: String? = null
@@ -53,9 +55,9 @@ class ContextDaoQuery : Model<ContextDao>(model = ContextDao) {
 
   val enumMapped by model.response
 
-  val bazImpl by model.baz(::BasicModelQuery)
+  val model2DImpl by model.model2D(::BasicModelQuery)
 
-  val bazArgsImpl by model.bazWithArgs
+  val model2DArgsImpl by model.model2DWithArgs
       .withArguments(ContextDao.BazArgs())(::BasicModelQuery)
 
   val singleList by model.singleNestedListOfMode(::BasicModelQuery)
@@ -70,8 +72,8 @@ fun main(args: Array<String>) {
 
         when (it.propertyName) {
           "response" -> "NO"
-          "baz" -> listOf(listOf(mapOf("response" to "NO")))
-          "bazWithArgs" -> listOf(listOf(mapOf("response" to "YES")))
+          "model2D" -> listOf(listOf(mapOf("response" to "NO")))
+          "model2DWithArgs" -> listOf(listOf(mapOf("response" to "YES")))
           "singleNestedListOfMode " -> listOf(mapOf("response" to "YES"))
           else -> null
         }
@@ -81,8 +83,8 @@ fun main(args: Array<String>) {
 
   foo.apply {
     require(enumMapped == Response.NO)
-    require(bazImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.NO)
-    require(bazArgsImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.YES)
+    require(model2DImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.NO)
+    require(model2DArgsImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.YES)
     require(singleList.firstOrNull()?.parsedResponse == Response.YES)
   }
 }
