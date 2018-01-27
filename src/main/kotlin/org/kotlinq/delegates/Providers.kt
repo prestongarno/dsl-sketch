@@ -6,6 +6,7 @@ import org.kotlinq.adapters.initializer
 import org.kotlinq.adapters.parser
 import org.kotlinq.api.Model
 import org.kotlinq.dsl.ArgBuilder
+import org.kotlinq.dsl.ArgumentSpec
 import org.kotlinq.dsl.DslBuilder
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
@@ -25,8 +26,18 @@ fun <Z> parsingProvider(name: String, init: (String) -> Z)
     : DslBuilderProvider<Z> = ParsingDelegateProvider(name, init)
 
 internal
-fun <Z> initializingProvider(name: String, init: () -> Z)
-    : DslBuilderProvider<Z> = TODO()//DelegateProviderImpl(name, init)
+fun <Z: Model<*>> initializingProvider(name: String, init: () -> Z)
+    : DslBuilderProvider<Z> = DelegateProviderImpl(name, init)
+
+@Suppress("UNCHECKED_CAST")
+internal
+fun <U : List<*>> initializingProvider(
+    name: String,
+    init: () -> Model<*>,
+    block: DslBuilder<Model<*>, ArgumentSpec>.() -> Unit
+): DelegateProvider<U> =
+    DelegateProviderImpl(name, init)
+        .apply(block) as DelegateProvider<U>
 
 interface DslBuilderProvider<Z>
   : DslBuilder<Z, ArgBuilder>,

@@ -1,11 +1,12 @@
 package org.kotlinq.static
 
 import org.kotlinq.delegates.DeserializingStub
-import org.kotlinq.delegates.DisjointCollectionStub
+import org.kotlinq.delegates.DisjointCollection
 import org.kotlinq.delegates.EnumStub
 import org.kotlinq.delegates.GraphQlPropertyStub
 import org.kotlinq.delegates.InitializingStub
 import org.kotlinq.delegates.PredicateStub
+import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.ArgumentSpec
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
@@ -16,6 +17,15 @@ fun <T> readOnly(value: T): ReadOnlyProperty<Any, T> = ReadOnlyImpl(value)
 
 interface Provider<out T> {
   operator fun provideDelegate(inst: Any, property: KProperty<*>): ReadOnlyProperty<Any, T>
+
+  companion object {
+
+    internal
+    fun <T : DisjointCollection, Z> disjoint(builder: DisjointDelegateBuilder<T, Z>) = object : Provider<T> {
+      override fun provideDelegate(inst: Any, property: KProperty<*>) = DisjointCollection.create(property.name, ArgBuilder(), builder.clazz)
+    }
+
+  }
 }
 
 interface ConfiguredProvider<in A : ArgumentSpec, out T : GraphQlPropertyStub> : Provider<PredicateStub<A, T>> {
@@ -45,20 +55,6 @@ interface PredicateProvider<in A : ArgumentSpec, out T : GraphQlPropertyStub> {
   }
 }
 
-interface CollectionProvider<T, out U : List<*>> : Provider<DisjointCollectionStub<T, U>> {
-  override operator fun provideDelegate(
-      inst: Any,
-      property: KProperty<*>
-  ): ReadOnlyProperty<Any, DisjointCollectionStub<T, U>>
-
-  companion object {
-    fun <T, U : List<*>> new(builder: DisjointDelegateBuilder<T, U>) = object : CollectionProvider<T, U> {
-      override fun provideDelegate(inst: Any, property: KProperty<*>) =
-          readOnly(DisjointCollectionStub<T, U>(property.name))
-    }
-  }
-}
-
 internal
 fun <T : Any> deserialized(): Provider<DeserializingStub> =
     StubProvider(DeserializingStub::class)
@@ -69,8 +65,7 @@ fun <T : Any> initialized(): Provider<InitializingStub<T>> =
     StubProvider(InitializingStub::class) as StubProvider<InitializingStub<T>>
 
 internal
-fun <T : Enum<T>> enumMapper(): Provider<EnumStub<T>> =
-    EnumProvider()
+fun <T : Enum<T>> enumMapper(): Provider<EnumStub<T>> = EnumProvider()
 
 
 /***********************************************

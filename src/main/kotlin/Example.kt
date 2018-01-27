@@ -16,14 +16,9 @@ object ContextDao {
   val foo by initialized<FooDao>()
   val response by enumMapper<Response>()
 
-  val baz by schema<Int>()
-      .asList()
-      .asNullable()
+  val baz by schema<String>()
       .asList()
       .asList()
-      .asNullable()
-      .asList()
-      .requiringArguments<BazArgs>()
       .build()
 
   class BazArgs : ArgBuilder() {
@@ -32,13 +27,15 @@ object ContextDao {
 }
 
 
+class ModelInt : Model<String>("Hello world")
+
 class BarImpl : Model<ContextDao>(ContextDao) {
-  val implFoo by FooDao.scalar({ 10000 })
-  val implContextFoo by ContextDao.foo { FooDao }
+  //val implFoo by FooDao.scalar({ 10000 })
+  //val implContextFoo by ContextDao.foo { FooDao }
   val enumMapped by ContextDao.response
 
-  val bazImpl by ContextDao.baz.withArguments(ContextDao.BazArgs())({ -1 }) {
-    default = 9000
+  val bazImpl by ContextDao.baz(::ModelInt) {
+    println(this::class)
     config {
       take("Hello" to "world")
     }
@@ -48,19 +45,16 @@ class BarImpl : Model<ContextDao>(ContextDao) {
 fun main(args: Array<String>) {
   val foo = BarImpl()
 
-  foo.properties.forEach {
+  foo.properties.values.forEach {
     println(it.kotlinType)
+    if (it.propertyName == "response") {
+      require(it.adapter.accept("NO"))
+      println(it.adapter.getValue())
+    }
   }
 
   foo.apply {
-    require(implContextFoo == FooDao)
-    require(implFoo == 10000)
-    require(bazImpl
-        .first()
-        .first()
-        ?.first()
-        ?.first()
-        ?.first()
-        ?.first()?.let { it - 1 } == 0)
+    require(enumMapped == Response.NO)
+    require(bazImpl.isEmpty())
   }
 }

@@ -1,6 +1,8 @@
 package org.kotlinq.static
 
+import org.kotlinq.delegates.DisjointCollection
 import org.kotlinq.delegates.DisjointCollectionStub
+import org.kotlinq.delegates.DisjointCollectionStub1
 import org.kotlinq.delegates.GraphQlPropertyStub
 import org.kotlinq.delegates.InitializingStub
 import org.kotlinq.dsl.ArgumentSpec
@@ -15,7 +17,9 @@ class ContextBuilder<T : Any, out A : ArgumentSpec, S : GraphQlPropertyStub> {
       ConfiguredContextBuilder<InitializingStub<T>, A>(InitializingStub::class as KClass<InitializingStub<T>>)
           as ConfiguredContextBuilder<InitializingStub<T>, B>
 
-  fun asList(): DisjointDelegateBuilder<T, List<T>> = DisjointDelegateBuilder()
+  @Suppress("UNCHECKED_CAST")
+  fun asList(): DisjointDelegateBuilder<DisjointCollectionStub<T>, T> =
+      DisjointDelegateBuilder(DisjointCollectionStub::class as KClass<DisjointCollectionStub<T>>)
 
   fun asNullable(): NullableTypeProvider<T> = NullableTypeProvider()
 
@@ -28,15 +32,19 @@ class ConfiguredContextBuilder<T : GraphQlPropertyStub, in A : ArgumentSpec>(val
   fun build(): PredicateProvider<A, T> = using<A>().build(clazz)
 }
 
-class DisjointDelegateBuilder<T, U : List<*>> {
+class DisjointDelegateBuilder<T : DisjointCollection, Z>(val clazz: KClass<T>) {
 
   @Suppress("UNCHECKED_CAST")
-  fun <A : ArgumentSpec> requiringArguments(): ConfiguredContextBuilder<DisjointCollectionStub<T, U>, A> =
-      ConfiguredContextBuilder(DisjointCollectionStub::class as KClass<DisjointCollectionStub<T, U>>)
+  fun <A : ArgumentSpec> requiringArguments(): ConfiguredContextBuilder<T, A> =
+      ConfiguredContextBuilder(clazz)
 
-  fun asList(): DisjointDelegateBuilder<T, List<U>> = DisjointDelegateBuilder()
-  fun asNullable(): DisjointDelegateBuilder<T, List<U?>> = DisjointDelegateBuilder()
-  fun build(): CollectionProvider<T, U> = CollectionProvider.new(this)
+  @Suppress("UNCHECKED_CAST")
+  fun asList(): DisjointDelegateBuilder<DisjointCollectionStub1<Z>, Z> =
+      DisjointDelegateBuilder(DisjointCollectionStub1::class as KClass<DisjointCollectionStub1<Z>>)
+
+  //fun asNullable(): DisjointDelegateBuilder<T, Z> = DisjointDelegateBuilder()
+
+  fun build(): Provider<T> = Provider.disjoint(this)
 }
 
 class NullableTypeProvider<T : Any> {

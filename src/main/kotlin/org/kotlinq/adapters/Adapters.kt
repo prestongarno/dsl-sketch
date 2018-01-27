@@ -5,6 +5,7 @@ import org.kotlinq.adapters.validation.isList
 import org.kotlinq.adapters.validation.isNullable
 import org.kotlinq.api.Model
 import kotlin.reflect.KType
+import kotlin.reflect.full.isSubclassOf
 
 fun <Z> deserializer(type: KType, init: (java.io.InputStream) -> Z): GraphQlAdapter =
     DeserializingAdapter(type, init)
@@ -15,7 +16,8 @@ fun <Z> parser(type: KType, init: (String) -> Z): GraphQlAdapter =
 fun <Z : Model<*>> initializer(type: KType, init: () -> Z): GraphQlAdapter =
     ObjectAdapter(type, init)
 
-fun GraphQlAdapter.asCollection() = if (type.isCollection()) CollectionAdapterImpl(this) else this
+fun <T: GraphQlAdapter> T.asCollection(): GraphQlAdapter =
+    if (type.isCollection()) CollectionAdapterImpl(this) else this
 
 interface GraphQlAdapter {
   val type: KType
@@ -93,13 +95,12 @@ class ParsingAdapter(
     override val type: KType,
     private val adapter: (String) -> Any?
 ) : Adapter() {
+
   private var backingField: Any? = null
 
   override fun accept(input: Any): Boolean {
-    @Suppress("UNCHECKED_CAST")
-    // todo interfaces for adapters
-    backingField = (input as? Any?)?.let { adapter(it.toString()) } ?: backingField
-    return backingField == null
+    backingField = (adapter.invoke("$input")) ?: backingField
+    return backingField != null || isNullable()
   }
 
   override fun transform(input: Any): Any? {
@@ -121,6 +122,14 @@ class CollectionAdapterImpl(
 
   private var backingField: List<*>? = null
 
+  val dimensions = let {
+    var count = 0
+    var ktype: KType? = type
+    while(ktype?.isCollection() == true)
+      ktype = ktype.arguments.firstOrNull()?.type.also { count++ }
+    count
+  }
+
   override fun accept(input: Any): Boolean {
 
     backingField = (input as? Collection<*>)
@@ -137,6 +146,6 @@ class CollectionAdapterImpl(
       ?.map(delegateAdapter::transform)
       ?: if (!isNullable()) emptyList<Any>() else null
 
-  override fun getValue() = backingField
+  override fun getValue() = backingField ?: emptyList<Any?>()
 
 }
