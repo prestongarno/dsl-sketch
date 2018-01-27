@@ -1,6 +1,6 @@
 package org.kotlinq.adapters
 
-import org.kotlinq.api.Model
+import org.kotlinq.Model
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType

@@ -1,4 +1,4 @@
-import org.kotlinq.api.Model
+import org.kotlinq.Model
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.static.ContextBuilder.Companion.schema
 import org.kotlinq.static.enumMapper
@@ -31,7 +31,7 @@ object ContextDao {
       .requiringArguments<BazArgs>()
       .build()
 
-  val singleNestedListOfMode by schema<BasicModel>()
+  val modelList by schema<BasicModel>()
       .asList()
       .build()
 
@@ -60,7 +60,7 @@ class ContextDaoQuery : Model<ContextDao>(model = ContextDao) {
   val model2DArgsImpl by model.model2DWithArgs
       .withArguments(ContextDao.BazArgs())(::BasicModelQuery)
 
-  val singleList by model.singleNestedListOfMode(::BasicModelQuery)
+  val singleList by model.modelList(::BasicModelQuery)
 }
 
 fun main(args: Array<String>) {
@@ -68,13 +68,13 @@ fun main(args: Array<String>) {
   val foo = ContextDaoQuery()
 
   require(foo.properties.values.find {
-    !it.adapter.accept(
 
+    !it.adapter.accept(
         when (it.propertyName) {
           "response" -> "NO"
           "model2D" -> listOf(listOf(mapOf("response" to "NO")))
           "model2DWithArgs" -> listOf(listOf(mapOf("response" to "YES")))
-          "singleNestedListOfMode " -> listOf(mapOf("response" to "YES"))
+          "modelList" -> listOf(mapOf("response" to "YES"))
           else -> null
         }
 

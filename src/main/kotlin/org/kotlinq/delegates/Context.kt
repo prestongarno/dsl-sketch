@@ -1,6 +1,6 @@
 package org.kotlinq.delegates
 
-import org.kotlinq.api.Model
+import org.kotlinq.Model
 import org.kotlinq.delegates.GraphQlPropertyStub.Companion.create
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.ArgumentSpec
@@ -8,7 +8,6 @@ import org.kotlinq.dsl.DslBuilder
 import org.kotlinq.static.readOnly
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty
 
 sealed class GraphQlPropertyStub(val arguments: ArgumentSpec) {

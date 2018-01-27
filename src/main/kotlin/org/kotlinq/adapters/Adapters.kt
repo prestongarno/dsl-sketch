@@ -3,7 +3,7 @@ package org.kotlinq.adapters
 import org.kotlinq.adapters.validation.isCollection
 import org.kotlinq.adapters.validation.isList
 import org.kotlinq.adapters.validation.isNullable
-import org.kotlinq.api.Model
+import org.kotlinq.Model
 import kotlin.reflect.KType
 
 fun <Z> deserializer(type: KType, init: (java.io.InputStream) -> Z): GraphQlAdapter =
@@ -125,16 +125,8 @@ class CollectionAdapterImpl(
 
   private var backingField: List<*>? = null
 
-  val dimensions = let {
-    var count = 0
-    var ktype: KType? = type
-    while (ktype?.isCollection() == true)
-      ktype = ktype.arguments.firstOrNull()?.type.also { count++ }
-    count
-  }
-
   override fun accept(input: Any?): Boolean {
-
+    println(type.dimensions())
     backingField = (input as? List<*>)
         ?.filterNotNull()
         ?.map { delegateAdapter.transform(it) }

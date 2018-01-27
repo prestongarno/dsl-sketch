@@ -4,7 +4,7 @@ import org.kotlinq.adapters.deserializer
 import org.kotlinq.adapters.graphQlProperty
 import org.kotlinq.adapters.initializer
 import org.kotlinq.adapters.parser
-import org.kotlinq.api.Model
+import org.kotlinq.Model
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.ArgumentSpec
 import org.kotlinq.dsl.DslBuilder
