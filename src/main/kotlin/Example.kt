@@ -1,8 +1,8 @@
 import org.kotlinq.Model
+import org.kotlinq.delegates.CollectionStubN
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.static.ContextBuilder.Companion.schema
 import org.kotlinq.static.enumMapper
-import org.kotlinq.static.initialized
 
 /*******************
  * Generated schema
@@ -25,6 +25,13 @@ object ContextDao {
       .asList()
       .asList()
       .requiringArguments<BazArgs>()
+      .build()
+
+  val modelNDimensions: CollectionStubN<Model<BasicModel>, List<List<List<List<Model<BasicModel>>>>>> by schema<BasicModel>()
+      .asList()
+      .asList()
+      .asList()
+      .asList()
       .build()
 
   val modelList by schema<BasicModel>()
@@ -56,12 +63,14 @@ class ContextDaoQuery : Model<ContextDao>(model = ContextDao) {
   val model2DArgsImpl by model.model2DWithArgs
       .withArguments(ContextDao.BazArgs())(::BasicModelQuery)
 
+  // erased actual type after >2 nested lists
+  val modelNDimenstion by model.modelNDimensions { BasicModelQuery() }
+
   val singleList by model.modelList(::BasicModelQuery)
 }
 
 fun main(args: Array<String>) {
 
-  val a = ::ContextDaoQuery
   val foo = ContextDaoQuery()
 
   require(foo.properties.values.find {
@@ -72,6 +81,12 @@ fun main(args: Array<String>) {
           "model2D" -> listOf(listOf(mapOf("response" to "NO")))
           "model2DWithArgs" -> listOf(listOf(mapOf("response" to "YES")))
           "modelList" -> listOf(mapOf("response" to "YES"))
+          "modelNDimensions" -> {
+            listOf(mapOf("response" to "NO"))
+                .nested()
+                .nested()
+                .nested()
+          }
           else -> null
         }
 
@@ -83,5 +98,19 @@ fun main(args: Array<String>) {
     require(model2DImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.NO)
     require(model2DArgsImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.YES)
     require(singleList.firstOrNull()?.parsedResponse == Response.YES)
+
+    val passesNDimensionTest = modelNDimenstion.firstOrNull()
+        ?.firstOrNull()
+        ?.firstOrNull()
+        ?.firstOrNull()
+        ?.let { it as? BasicModelQuery }
+        ?.let {
+          it.parsedResponse == Response.NO
+        } ?: false
+
+    require(passesNDimensionTest) // !!!
   }
 }
+
+internal
+fun <T> List<T>.nested() = listOf(this)

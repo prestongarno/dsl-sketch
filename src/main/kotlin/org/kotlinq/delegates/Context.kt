@@ -167,7 +167,7 @@ class CollectionStub2<T>(
       : GraphQlPropertyProvider<List<List<Z>>> = collectionProvider(name, init, block)
 }
 
-class CollectionStubN<in X, T : List<List<List<*>>>> private constructor(
+class CollectionStubN<X, T : List<List<List<*>>>> private constructor(
     name: String,
     args: ArgumentSpec = ArgBuilder(),
     token: CollectionPropertyStub.Builder<*, T>? = null
@@ -176,11 +176,14 @@ class CollectionStubN<in X, T : List<List<List<*>>>> private constructor(
   override fun withArguments(arguments: ArgumentSpec)
       : CollectionStub1<T> = CollectionStub1(name, arguments)
 
-  operator fun <Z : Model<X>> invoke(init: () -> Z)
-      : GraphQlPropertyProvider<T> = collectionProvider(name, init)
+  operator fun invoke(init: () -> X)
+      // TODO fix this
+      : GraphQlPropertyProvider<T> = collectionProvider<T>(name, init as () -> Model<*>)
 
-  operator fun <Z : Model<X>> invoke(init: () -> Z, block: BuilderBlock<Z, ArgumentSpec>)
-      : GraphQlPropertyProvider<T> = collectionProvider(name, init, block)
+  operator fun invoke(init: () -> X, block: DslBuilder<X, ArgumentSpec>.() -> Unit)
+      // TODO fix this
+      : GraphQlPropertyProvider<T> =
+      collectionProvider<Model<*>, T>(name, init as () -> Model<*>, block as DslBuilder<Model<*>, ArgumentSpec>.() -> Unit)
 
   companion object {
 
