@@ -4,6 +4,10 @@ import org.kotlinq.static.ContextBuilder.Companion.schema
 import org.kotlinq.static.enumMapper
 import org.kotlinq.static.initialized
 
+/*******************
+ * Generated schema
+ */
+
 enum class Response {
   YES, NO, MAYBE
 }
@@ -38,34 +42,42 @@ object BasicModel {
   val response by enumMapper<Response>()
 }
 
-class ModelInt : Model<BasicModel>(model = BasicModel) {
+/*******************
+ * Graph query implementations
+ */
+class BasicModelQuery : Model<BasicModel>(model = BasicModel) {
   val parsedResponse by model.response
 }
 
-class BarImpl : Model<ContextDao>(model = ContextDao) {
+class ContextDaoQuery : Model<ContextDao>(model = ContextDao) {
 
   val enumMapped by model.response
 
-  val bazImpl by model.baz(::ModelInt)
+  val bazImpl by model.baz(::BasicModelQuery)
 
   val bazArgsImpl by model.bazWithArgs
-      .withArguments(ContextDao.BazArgs())(::ModelInt)
+      .withArguments(ContextDao.BazArgs())(::BasicModelQuery)
 
-  val singleList by model.singleNestedListOfMode(::ModelInt)
+  val singleList by model.singleNestedListOfMode(::BasicModelQuery)
 }
 
 fun main(args: Array<String>) {
-  val foo = BarImpl()
 
-  foo.properties.values.forEach {
-    println(it.propertyName + ": " + it.kotlinType)
-    when {
-      it.propertyName == "response" -> require(it.adapter.accept("NO"))
-      it.propertyName == "baz" -> require(it.adapter.accept(listOf(listOf(mapOf("response" to "NO")))))
-      it.propertyName == "bazWithArgs" -> require(it.adapter.accept(listOf(listOf(mapOf("response" to "YES")))))
-      it.propertyName == "singleNestedListOfMode " -> require(it.adapter.accept(listOf(mapOf("response" to "YES"))))
-    }
-  }
+  val foo = ContextDaoQuery()
+
+  require(foo.properties.values.find {
+    !it.adapter.accept(
+
+        when (it.propertyName) {
+          "response" -> "NO"
+          "baz" -> listOf(listOf(mapOf("response" to "NO")))
+          "bazWithArgs" -> listOf(listOf(mapOf("response" to "YES")))
+          "singleNestedListOfMode " -> listOf(mapOf("response" to "YES"))
+          else -> null
+        }
+
+    )
+  } == null)
 
   foo.apply {
     require(enumMapped == Response.NO)

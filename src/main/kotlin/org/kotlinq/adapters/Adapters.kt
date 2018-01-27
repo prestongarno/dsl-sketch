@@ -26,10 +26,10 @@ fun <T : GraphQlAdapter> T.asCollection(): GraphQlAdapter {
 interface GraphQlAdapter {
   val type: KType
   /* Takes the value [input] and returns the result of setting the value on this property */
-  fun accept(input: Any): Boolean
+  fun accept(input: Any?): Boolean
 
   /** Take [input] and return the result of deserializing as an object */
-  fun transform(input: Any): Any?
+  fun transform(input: Any?): Any?
 
   fun getValue(): Any?
 }
@@ -52,21 +52,17 @@ class ObjectAdapter(
 
   private var backingField: Model<*>? = null
 
-  override fun accept(input: Any): Boolean {
-    (input as? Map<*, *>)?.map {
-
-    }
+  override fun accept(input: Any?): Boolean {
+    backingField = transform(input) as? Model<*>
     return backingField == null
   }
 
-  override fun transform(input: Any): Any? {
-    return (input as? Map<*, *>)?.entries?.let { entries ->
-      val init = adapter()
-      entries.forEach { (k, v) ->
-        init.properties["$k"]?.adapter?.accept(v ?: Unit)
-      }
-      init
+  override fun transform(input: Any?): Any? = (input as? Map<*, *>)?.entries?.let { entries ->
+    val init = adapter()
+    entries.forEach { (k, v) ->
+      init.properties["$k"]?.adapter?.accept(v ?: Unit)
     }
+    init
   }
 
   override fun getValue(): Any? {
@@ -86,14 +82,11 @@ class DeserializingAdapter(
 ) : Adapter() {
   private var backingField: Any? = null
 
-  override fun accept(input: Any): Boolean {
-    @Suppress("UNCHECKED_CAST")
-    // todo interfaces for adapters
-    backingField = (input as? Any?)?.let { adapter(it.toString().byteInputStream()) } ?: backingField
-    return backingField == null
+  override fun accept(input: Any?): Boolean {
+    TODO("todo implement proper deserialization")
   }
 
-  override fun transform(input: Any): Any? {
+  override fun transform(input: Any?): Any? {
     TODO("not implemented")
   }
 
@@ -108,12 +101,12 @@ class ParsingAdapter(
 
   private var backingField: Any? = null
 
-  override fun accept(input: Any): Boolean {
+  override fun accept(input: Any?): Boolean {
     backingField = (adapter.invoke("$input")) ?: backingField
     return backingField != null || isNullable()
   }
 
-  override fun transform(input: Any): Any? {
+  override fun transform(input: Any?): Any? {
     TODO("not implemented")
   }
 
@@ -140,7 +133,7 @@ class CollectionAdapterImpl(
     count
   }
 
-  override fun accept(input: Any): Boolean {
+  override fun accept(input: Any?): Boolean {
 
     backingField = (input as? List<*>)
         ?.filterNotNull()
@@ -150,7 +143,7 @@ class CollectionAdapterImpl(
     return isNullable() || backingField != null
   }
 
-  override fun transform(input: Any): List<*>? = (input as? List<*>)
+  override fun transform(input: Any?): List<*>? = (input as? List<*>)
       ?.filterNotNull()
       ?.map(delegateAdapter::transform)
       ?: if (!isNullable()) emptyList<Any>() else null
