@@ -12,10 +12,6 @@ enum class Response {
   YES, NO, MAYBE
 }
 
-object FooDao {
-  val scalar by initialized<Int>()
-}
-
 object ContextDao {
 
   val response by enumMapper<Response>()
