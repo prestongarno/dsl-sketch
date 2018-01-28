@@ -8,12 +8,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 
-@Singleton
-@Component(modules = [
-  AdapterService.Companion::class,
-  AdapterUtilities::class,
-  PropertyProvider::class])
 interface Kotlinq {
-   fun utilities(util: AdapterUtilities)
+   fun utilities()
 }
 

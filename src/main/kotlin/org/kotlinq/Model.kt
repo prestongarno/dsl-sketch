@@ -1,6 +1,6 @@
 package org.kotlinq
 
-import org.kotlinq.adapters.GraphQlProperty
+import org.kotlinq.api.GraphQlProperty
 import org.kotlinq.adapters.validation.isNullable
 
 

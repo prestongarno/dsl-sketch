@@ -1,10 +1,12 @@
 package org.kotlinq.delegates
 
+import dagger.Module
 import org.kotlinq.Model
 import org.kotlinq.delegates.GraphQlPropertyStub.Companion.create
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.ArgumentSpec
 import org.kotlinq.dsl.DslBuilder
+import javax.inject.Singleton
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
@@ -14,8 +16,11 @@ internal typealias BuilderBlock<Z, A> = DslBuilder<Z, A>.() -> Unit
 
 sealed class GraphQlPropertyStub(val arguments: ArgumentSpec) {
 
+
   abstract fun withArguments(arguments: ArgumentSpec): GraphQlPropertyStub
 
+  @Module
+  @Singleton
   companion object {
 
     @Suppress("UNCHECKED_CAST")
@@ -84,12 +89,7 @@ class EnumStub<Z : Enum<Z>>(
 
   override fun withArguments(arguments: ArgumentSpec): EnumStub<Z> = EnumStub(propertyName, arguments)
 
-  override operator fun provideDelegate(inst: Model<*>, property: KProperty<*>): ReadOnlyProperty<Any, Z> =
-      parsingProvider(propertyName, { str ->
-        @Suppress("UNCHECKED_CAST")
-        (property.returnType.classifier as? KClass<Z>)
-            ?.java?.enumConstants?.find { it.name == str }
-      }).provideDelegate(inst, property)
+  override operator fun provideDelegate(inst: Model<*>, property: KProperty<*>): ReadOnlyProperty<Any, Z> = TODO()
 
   companion object {
 

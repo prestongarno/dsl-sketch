@@ -1,159 +1,51 @@
 package org.kotlinq.adapters
 
-import org.kotlinq.adapters.validation.isCollection
-import org.kotlinq.adapters.validation.isList
-import org.kotlinq.adapters.validation.isNullable
+import dagger.Module
 import org.kotlinq.Model
-import org.kotlinq.api.AdapterService
-import org.kotlinq.api.ListAdapter
-import org.kotlinq.api.ObjectTransformer
+import org.kotlinq.api.GraphQlProperty
+import javax.inject.Singleton
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
-interface AdapterFactory {
+@Module
+@Singleton
+internal
+interface AdapterService {
 
-  val service: AdapterService
 
-  fun <Z> deserializer(type: KType, init: (java.io.InputStream) -> Z): GraphQlAdapter =
-      DeserializingAdapter(type, init)
+  fun <Z> deserializer(type: KType, init: (java.io.InputStream) -> Z)
+      : GraphQlProperty<Z> = TODO()
 
-  fun <Z> parser(type: KType, init: (String) -> Z): GraphQlAdapter =
-      ParsingAdapter(type, init)
+  fun <Z> parser(type: KType, init: (String) -> Z)
+      : GraphQlProperty<Z> = TODO()
 
-  fun <Z : Model<*>> initializer(type: KType, init: () -> Z): GraphQlAdapter =
-      ObjectAdapter(type, init, service.typeAdapter.transformer).asCollection(init)
+  fun <Z : Model<*>> initializer(type: KType, init: () -> Z)
+      : GraphQlProperty<Z> = TODO()
+
+  fun <Z : Enum<Z>> enumDeserializer(clazz: KClass<Z>, type: KType)
+      : GraphQlProperty<Z> = TODO()
+
 }
 
-private
-fun  ObjectAdapter.asCollection(init: () -> Model<*>?): GraphQlAdapter {
-  var adapter: GraphQlAdapter = this
-  for (i in 1..type.dimensions()) {
-    adapter = CollectionAdapterImpl(adapter, init, type, AdapterService.listAdapter)
-  }
-  return adapter
-}
 
-interface GraphQlAdapter {
+interface Adapter {
   val type: KType
-  /* Takes the value [input] and returns the result of setting the value on this property */
-  fun accept(input: String): Boolean
-
-  /** Take [input] and return the result of deserializing as an object */
-  fun transform(input: String): Any?
-
   fun getValue(): Any?
 }
 
-
-interface CollectionAdapter : GraphQlAdapter {
-  val delegateAdapter: GraphQlAdapter
+interface ModelAdapter: Adapter {
+  fun resolve(value: Map<String, Any?>): Boolean
 }
 
-private
-sealed class Adapter : GraphQlAdapter {
-  override fun toString() = "::$type"
+interface ModelCollectionAdapter : Adapter {
+  fun resolve(value: List<Map<String, Any?>>): Boolean
 }
 
-private
-class ObjectAdapter(
-    override val type: KType,
-    val init: () -> Model<*>,
-    val transformer: ObjectTransformer
-) : Adapter() {
-
-  private var backingField: Model<*>? = null
-
-  override fun accept(input: String): Boolean {
-    backingField = transform(input) as? Model<*>
-    return backingField == null
-  }
-
-  override fun transform(input: String): Any? = transformer.transform(input).let {
-    val init = init()
-    it.entries.forEach { (k, v) ->
-      init.properties[k]?.adapter?.accept(v)
-    }
-    init
-  }
-
-  override fun getValue(): Any? {
-    return backingField ?: if (!isNullable()) {
-      // attempt to create the value before returning null
-      init()
-          .let { if (it.isResolved()) it else null }
-          ?.also { backingField = it }
-    } else null
-  }
+interface DeserializingAdapter : Adapter {
+  fun resolve(stream: java.io.InputStream): Boolean
 }
 
-private
-class DeserializingAdapter(
-    override val type: KType,
-    private val adapter: (java.io.InputStream) -> Any?
-) : Adapter() {
-  private var backingField: Any? = null
-
-  override fun accept(input: String): Boolean {
-    TODO("todo implement proper deserialization")
-  }
-
-  override fun transform(input: String): Any? {
-    TODO("not implemented")
-  }
-
-  override fun getValue() = backingField
+interface ParsingAdapter : Adapter {
+  val initializer: (String) -> Any?
 }
 
-private
-class ParsingAdapter(
-    override val type: KType,
-    private val adapter: (String) -> Any?
-) : Adapter() {
-
-  private var backingField: Any? = null
-
-  override fun accept(input: String): Boolean {
-    backingField = (adapter.invoke("$input")) ?: backingField
-    return backingField != null || isNullable()
-  }
-
-  override fun transform(input: String): Any? {
-    TODO("not implemented")
-  }
-
-  override fun getValue() = backingField
-}
-
-private
-class CollectionAdapterImpl(
-    override val delegateAdapter: GraphQlAdapter,
-    val init: () -> Model<*>?,
-    override val type: KType = delegateAdapter.type,
-    val transformer: ListAdapter
-) : CollectionAdapter {
-
-  init {
-    require(isList()) { "Illegal property type, must be a List<*> but found '$type'" }
-  }
-
-  private var backingField: List<*>? = null
-
-  override fun accept(input: String): Boolean {
-    backingField = transform(input)
-    return isNullable() || backingField != null
-  }
-
-  override fun transform(input: String): List<*>? =
-      transformer.createFromList(listOf(input), init)
-
-  override fun getValue() = backingField ?: emptyList<Any?>()
-
-}
-
-private
-fun KType.dimensions(): Int {
-  var count = 0
-  var ktype: KType? = this
-  while (ktype?.isCollection() == true)
-    ktype = ktype.arguments.firstOrNull()?.type.also { count++ }
-  return count
-}
