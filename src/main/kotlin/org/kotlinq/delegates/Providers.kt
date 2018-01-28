@@ -1,10 +1,8 @@
 package org.kotlinq.delegates
 
-import org.kotlinq.adapters.deserializer
-import org.kotlinq.adapters.graphQlProperty
-import org.kotlinq.adapters.initializer
-import org.kotlinq.adapters.parser
 import org.kotlinq.Model
+import org.kotlinq.adapters.GraphQlProperty
+import org.kotlinq.adapters.graphQlProperty
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.dsl.ArgumentSpec
 import org.kotlinq.dsl.DslBuilder
@@ -17,16 +15,21 @@ interface GraphQlPropertyProvider<out Z> {
       : ReadOnlyProperty<Any, Z>
 }
 
+fun <T : GraphQlProperty<*>> T.bindTo(model: Model<*>) = apply {
+  model.bind(this)
+}
+
 internal
 fun <Z> deserializingProvider(name: String, init: (java.io.InputStream) -> Z)
-    : DslBuilderProvider<Z> = DeserializingGraphQlPropertyProviderImpl(name, init)
+    : DslBuilderProvider<Z> =
+    DeserializingGraphQlPropertyProviderImpl<Z>(name, init)
 
 internal
 fun <Z> parsingProvider(name: String, init: (String) -> Z?)
     : DslBuilderProvider<Z> = ParsingGraphQlPropertyProvider(name, init)
 
 internal
-fun <Z: Model<*>> initializingProvider(name: String, init: () -> Z)
+fun <Z : Model<*>> initializingProvider(name: String, init: () -> Z)
     : DslBuilderProvider<Z> = GraphQlPropertyProviderImpl(name, init)
 
 @Suppress("UNCHECKED_CAST")
@@ -55,13 +58,9 @@ class DeserializingGraphQlPropertyProviderImpl<Z>(
 
   override fun config(block: ArgBuilder.() -> Unit) = args.block()
 
-  override operator fun provideDelegate(inst: Model<*>, property: KProperty<*>)
-      : ReadOnlyProperty<Any, Z> = graphQlProperty(
-      inst,
-      name,
-      deserializer(property.returnType, init),
-      default
-  )
+  override operator fun provideDelegate(inst: Model<*>, property: KProperty<*>) =
+      graphQlProperty<Z>(name, GraphQlProperty.deserializer(property.returnType, init))
+          .bindTo(inst)
 }
 
 private
@@ -76,11 +75,7 @@ class ParsingGraphQlPropertyProvider<Z>(
   override fun config(block: ArgBuilder.() -> Unit) = args.block()
 
   override fun provideDelegate(inst: Model<*>, property: KProperty<*>) =
-      graphQlProperty<Z>(
-          inst,
-          name,
-          parser(property.returnType, init)
-      )
+      graphQlProperty<Z>(name, GraphQlProperty.parser(property.returnType, init)).bindTo(inst)
 }
 
 private
@@ -96,10 +91,7 @@ class GraphQlPropertyProviderImpl<Z : Model<*>>(
   override fun config(block: ArgBuilder.() -> Unit) = args.block()
 
   override operator fun provideDelegate(inst: Model<*>, property: KProperty<*>)
-      : ReadOnlyProperty<Any, Z> = graphQlProperty(
-      inst,
-      name,
-      initializer(property.returnType, init),
-      default
-  )
+      : ReadOnlyProperty<Any, Z> =
+      graphQlProperty<Z>(name, GraphQlProperty.initializer(property.returnType, init))
+          .bindTo(inst)
 }

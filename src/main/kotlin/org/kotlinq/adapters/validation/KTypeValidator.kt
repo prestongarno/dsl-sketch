@@ -13,11 +13,11 @@ fun KType.isCollection(): Boolean {
 
 internal
 fun GraphQlProperty<*>.isList(): Boolean =
-    kotlinType.isSubtypeOf(PrototypeContainer.apexListType)
+    adapter.type.isSubtypeOf(PrototypeContainer.apexListType)
 
 internal
 fun GraphQlProperty<*>.isNullable(): Boolean =
-    kotlinType.isMarkedNullable
+    adapter.type.isMarkedNullable
 
 internal
 fun GraphQlAdapter.isList(): Boolean =

@@ -1,4 +1,5 @@
 import org.kotlinq.Model
+import org.kotlinq.api.DaggerKotlinq
 import org.kotlinq.delegates.CollectionStubN
 import org.kotlinq.dsl.ArgBuilder
 import org.kotlinq.static.ContextBuilder.Companion.schema
@@ -15,6 +16,8 @@ enum class Response {
 object ContextDao {
 
   val response by enumMapper<Response>()
+
+  val modelQuery by schema<BasicModel>().requiringArguments<ArgBuilder>().build()
 
   val model2D by schema<BasicModel>()
       .asList()
@@ -58,6 +61,8 @@ class ContextDaoQuery : Model<ContextDao>(model = ContextDao) {
 
   val enumMapped by model.response
 
+  val modelImpl by (model.modelQuery.withArguments(ArgBuilder()))(::BasicModelQuery)
+
   val model2DImpl by model.model2D(::BasicModelQuery)
 
   val model2DArgsImpl by model.model2DWithArgs
@@ -71,6 +76,10 @@ class ContextDaoQuery : Model<ContextDao>(model = ContextDao) {
 
 fun main(args: Array<String>) {
 
+  DaggerKotlinq.create()
+
+
+
   val foo = ContextDaoQuery()
 
   require(foo.properties.values.find {
@@ -78,16 +87,9 @@ fun main(args: Array<String>) {
     !it.adapter.accept(
         when (it.propertyName) {
           "response" -> "NO"
-          "model2D" -> listOf(listOf(mapOf("response" to "NO")))
-          "model2DWithArgs" -> listOf(listOf(mapOf("response" to "YES")))
-          "modelList" -> listOf(mapOf("response" to "YES"))
-          "modelNDimensions" -> {
-            listOf(mapOf("response" to "NO"))
-                .nested()
-                .nested()
-                .nested()
-          }
-          else -> null
+          "modelQuery" -> "{NO}"
+          "model2D" -> "[[{\"response\": \"YES\"]]"
+          else -> ""
         }
 
     )
@@ -95,6 +97,7 @@ fun main(args: Array<String>) {
 
   foo.apply {
     require(enumMapped == Response.NO)
+    println(modelImpl)
     require(model2DImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.NO)
     require(model2DArgsImpl.firstOrNull()?.firstOrNull()?.parsedResponse == Response.YES)
     require(singleList.firstOrNull()?.parsedResponse == Response.YES)
